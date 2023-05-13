@@ -3,10 +3,27 @@ import { readFileSync, writeFileSync } from "fs";
 import { google, youtube_v3 } from 'googleapis';
 import { OAuth2Client, Credentials } from 'google-auth-library';
 
+import { DynamicCommandLineAction, DynamicCommandLineParser } from "@rushstack/ts-command-line";
+
 const CONFIG_FILE = "./config.json"
 const CREDS_FILE = "./creds.json"
 
 type Config = { code: string; tokens: Credentials }
+
+let verbose = false
+let pretty: number | undefined = undefined
+
+const log = (obj: any, msg?: string) => {
+    if (verbose) {
+        const data = JSON.stringify(obj, undefined, pretty)
+        const prefix = msg ? `${msg} : ` : ""
+        console.log(`${prefix}${data}`)
+    }
+}
+
+const info = (obj: any) => {
+    console.log(JSON.stringify(obj, undefined, pretty))
+}
 
 const getYTConnectInfo = () => {
     const file = readFileSync(CREDS_FILE)
@@ -74,14 +91,14 @@ const youtube = google.youtube({
     auth: oAuth2Client
 });
 
-const setTitleStream = async (liveBroadcast: youtube_v3.Schema$LiveBroadcast) => {
+const setTitleStream = async (liveBroadcast: youtube_v3.Schema$LiveBroadcast, streamTitle: string) => {
     if (liveBroadcast) {
         const update = {
             part: ["id", "snippet", "status", "contentDetails"],
             requestBody: {
                 id: liveBroadcast.id,
                 snippet: {
-                    title: 'super stream',
+                    title: streamTitle,
                     scheduledStartTime: liveBroadcast.snippet?.scheduledStartTime
                 },
                 status: {
@@ -96,19 +113,19 @@ const setTitleStream = async (liveBroadcast: youtube_v3.Schema$LiveBroadcast) =>
                 }
             }
         }
-        console.log(JSON.stringify(update, undefined, 3))
+        log(update, "Update livebroadcast title")
         youtube.liveBroadcasts.update(update);
     }
 }
 
-const getLivestream = async () => {
+const getLiveBroadcast = async () => {
     const { data } = await youtube.liveBroadcasts.list({
         part: ["id", "snippet", "status", "contentDetails"],
         mine: true,
         maxResults: 1,
         broadcastType: 'all'
     });
-    console.log(JSON.stringify(data, undefined, 3))
+    log(data, "Livebroadcast list")
     return data.items && data.items[0] || {};
 }
 
@@ -117,18 +134,25 @@ const getVideo = async (videoId: string) => {
         part: ["id", "snippet", "statistics"],
         id: [videoId]
     });
-    console.log(JSON.stringify(data, undefined, 3))
+    log(data, "Video list")
     return data.items && data.items[0] || {};
 }
 
-const getPlaylistId = async (playlistName: string) => {
+const getPlaylists = async () => {
     const { data } = await youtube.playlists.list({
-        part: ["id"],
+        part: ["id", "snippet"],
         mine: true,
-        maxResults: 1
+        maxResults: 100
     });
-    console.log(JSON.stringify(data, undefined, 3))
-    return data.items && data.items[0].id || "";
+    log(data, "Playlist list")
+    return data.items && data.items || [];
+}
+
+const getPlaylistsId = async (playlistNames: string[]): Promise<{ id: string, name: string }[]> => {
+    const playlists = await getPlaylists()
+    return playlists
+        .filter((playlist) => playlistNames.find((name) => playlist.snippet?.title === name))
+        .map((playlist) => { return { id: playlist.id || "", name: playlist.snippet?.title || "" } })
 }
 
 
@@ -155,15 +179,100 @@ const run = async () => {
         console.log(`Please open this url to authorize the connection with your google application from creds.json file : ${authorizeUrl}`)
     } else {
         setCreds(tokens)
-        const liveStream = await getLivestream()
+
+        verbose = verboseFlag.value
+        pretty = prettyFlag.value
+
+
+        const liveBroadcast = await getLiveBroadcast()
         let video
-        if (liveStream.id){
-            video = await getVideo(liveStream.id)
+        if (liveBroadcast.id) {
+            video = await getVideo(liveBroadcast.id)
         }
 
-        await setTitleStream(liveStream)
+        switch (clp.selectedAction?.actionName) {
+            case infoAction.actionName:
+                info({ liveBroadcast, video })
+                break
+            case setTitleAction.actionName:
+                setTitleStream(liveBroadcast, setTitleAction.getStringParameter("--title").value || "")
+                break
+            case playlistIdAction.actionName:
+                const playlists = await getPlaylistsId([playlistIdAction.getStringParameter("--playlist").value || ""])
+                info((playlists || [])[0]?.id)
+                break
+            case playlistsIdAction.actionName:
+                info(await getPlaylistsId(playlistIdAction.getStringListParameter("--playlist").values.slice() || []))
+                break
+            default:
+                info("No action given")
+        }
     }
 }
 
 
-run()
+import { name, description } from "../package.json"
+const clp = new DynamicCommandLineParser({
+    toolFilename: name,
+    toolDescription: description
+})
+
+const verboseFlag = clp.defineFlagParameter({
+    parameterLongName: '--verbose',
+    parameterShortName: '-v',
+    description: 'Verbose logging',
+})
+const prettyFlag = clp.defineIntegerParameter({
+    parameterLongName: '--pretty',
+    parameterShortName: '-p',
+    argumentName: "NUMBER",
+    description: 'Pretty print logging',
+})
+
+const infoAction = new DynamicCommandLineAction({
+    actionName: "info",
+    summary: "Get current stream info",
+    documentation: "Will return broadcast and video info"
+})
+clp.addAction(infoAction)
+
+const setTitleAction = new DynamicCommandLineAction({
+    actionName: "set-title",
+    summary: "Set stream title",
+    documentation: "Set your stream title"
+})
+
+setTitleAction.defineStringParameter({
+    parameterLongName: "--title",
+    argumentName: "TITLE",
+    description: "Title to set"
+})
+
+const playlistsIdAction = new DynamicCommandLineAction({
+    actionName: "get-playlists",
+    summary: "get playlists id",
+    documentation: "Get playlists id by name"
+})
+
+playlistsIdAction.defineStringListParameter({
+    parameterLongName: "--playlist",
+    argumentName: "PLAYLIST",
+    description: "Playlist name"
+})
+
+clp.addAction(playlistsIdAction)
+
+const playlistIdAction = new DynamicCommandLineAction({
+    actionName: "get-playlist",
+    summary: "get playlist id",
+    documentation: "Get playlist id by name"
+})
+
+playlistIdAction.defineStringParameter({
+    parameterLongName: "--playlist",
+    argumentName: "PLAYLIST",
+    description: "Playlist name"
+})
+
+clp.addAction(playlistIdAction)
+clp.execute().then(run)

@@ -11,8 +11,15 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "preLaunchTask": "tsc: build - tsconfig.json",
+            "preLaunchTask": "npm: build",
             "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "--pretty",
+                "3",
+                "get-playlist",
+                "--playlist",
+                "Destiny 2"
+            ],
             "outFiles": [
                 "${workspaceFolder}/lib/**/*.js",
                 "!**/node_modules/**",
