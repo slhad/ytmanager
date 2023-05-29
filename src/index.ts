@@ -149,12 +149,16 @@ const updateVideo = async (video: youtube_v3.Schema$Video, parameters: CurrentSt
             }
 
             if (parameters.language) {
-                defaultLanguage: parameters.language
+                update.requestBody.snippet.defaultAudioLanguage = parameters.language
+            }
+
+            if (parameters.languageSub) {
+                update.requestBody.snippet.defaultLanguage = parameters.languageSub
             }
 
 
             if (parameters.category) {
-                update.requestBody.snippet.categoryId = video.snippet?.categoryId//parameters.category
+                update.requestBody.snippet.categoryId = parameters.category
             }
 
             if (parameters.tags) {
@@ -187,26 +191,30 @@ const getVideo = async (videoId: string) => {
     return data.items && data.items[0] || {};
 }
 
-const getCategoryId = async (categoryName: string) => {
-    const resp = await youtube.videoCategories.list({})
-    return resp.data && resp.data.items && resp.data.items.length ? resp.data.items[0].id || undefined : undefined
+const getCategoryId = async (categoryName: string, regionCode = "fr") => {
+    const resp = await youtube.videoCategories.list({
+        part: ["snippet"],
+        regionCode
+    })
+    const data = resp.data && resp.data.items && resp.data.items.length ? resp.data.items : []
+    return data.find(vc => vc.snippet?.title === categoryName)?.id || undefined
 }
 
-const getPlaylists = async () => {
+const getPlaylists = async (playlistNames: string[]): Promise<{ id: string, name: string }[]> => {
     const { data } = await youtube.playlists.list({
         part: ["id", "snippet"],
         mine: true,
         maxResults: 100
     });
     log(data, "Playlist list")
-    return data.items && data.items || [];
+    const playlists = data.items && data.items || [];
+    return playlists.filter((playlist) => playlistNames.find((name) => playlist.snippet?.title === name))
+        .map((playlist) => { return { id: playlist.id || "", name: playlist.snippet?.title || "" } })
 }
 
-const getPlaylistsId = async (playlistNames: string[]): Promise<{ id: string, name: string }[]> => {
-    const playlists = await getPlaylists()
-    return playlists
-        .filter((playlist) => playlistNames.find((name) => playlist.snippet?.title === name))
-        .map((playlist) => { return { id: playlist.id || "", name: playlist.snippet?.title || "" } })
+const getPlaylistsId = async (playlistNames: string[]): Promise<string[]> => {
+    const playlists = await getPlaylists(playlistNames)
+    return playlists.map((playlist) => playlist.id)
 }
 
 const askForAuth = () => {
@@ -233,11 +241,11 @@ const askForAuth = () => {
 const fetchInfo = async (): Promise<boolean> => {
     switch (clp.selectedAction?.actionName) {
         case playlistIdAction.actionName:
-            const playlists = await getPlaylistsId([playlistIdAction.getStringParameter("--playlist").value || ""])
+            const playlists = await getPlaylists([playlistIdAction.getStringParameter("--playlist").value || ""])
             info((playlists || [])[0]?.id);
             return true
-        case playlistsIdAction.actionName:
-            info(await getPlaylistsId(playlistIdAction.getStringListParameter("--playlist").values.slice() || []))
+        case playlistsAction.actionName:
+            info(await getPlaylists(playlistIdAction.getStringListParameter("--playlist").values.slice() || []))
             return true
         default:
             return false
@@ -249,6 +257,21 @@ type InfoStream = {
     video: youtube_v3.Schema$Video
 }
 
+const insertVideoIntoPlaylist = async (playlistId: string, videoId: string) => {
+    const data = await youtube.playlistItems.insert({
+        part: ["id", "snippet"],
+        requestBody: {
+            id: playlistId,
+            snippet: {
+                resourceId: {
+                    kind: "youtube#video",
+                    videoId
+                }
+            }
+        }
+    })
+}
+
 const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) => {
     log(css, "Raw current stream parameters to set")
 
@@ -256,9 +279,16 @@ const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) 
     const playlistsId = css.playlists ? await getPlaylistsId(css.playlists) : undefined
 
     css.category = categoryId
-    css.playlists = playlistsId?.map
+    css.playlists = playlistsId
 
     await updateVideo(stream.video, css)
+
+    if (css.playlists && stream.video.id) {
+        for (const playlistId of css.playlists) {
+            await insertVideoIntoPlaylist(playlistId, stream.video.id)
+        }
+    }
+
 }
 
 
@@ -286,11 +316,11 @@ const act = async () => {
             setTitleStream(liveBroadcast, setTitleAction.getStringParameter("--title").value || "")
             break;
         case playlistIdAction.actionName:
-            const playlists = await getPlaylistsId([playlistIdAction.getStringParameter("--playlist").value || ""])
+            const playlists = await getPlaylists([playlistIdAction.getStringParameter("--playlist").value || ""])
             info((playlists || [])[0]?.id);
             break;
-        case playlistsIdAction.actionName:
-            info(await getPlaylistsId(playlistIdAction.getStringListParameter("--playlist").values.slice() || []))
+        case playlistsAction.actionName:
+            info(await getPlaylists(playlistIdAction.getStringListParameter("--playlist").values.slice() || []))
             break;
         case setCurrentStreamAction.actionName:
             const params: CurrentStreamSettings = {
@@ -357,18 +387,18 @@ setTitleAction.defineStringParameter({
     description: "Title to set"
 })
 
-const playlistsIdAction = new DynamicCommandLineAction({
+const playlistsAction = new DynamicCommandLineAction({
     actionName: "get-playlists",
-    summary: "get playlists id",
-    documentation: "Get playlists id by name"
+    summary: "get playlists",
+    documentation: "Get playlists by name"
 })
 
-playlistsIdAction.defineStringListParameter({
+playlistsAction.defineStringListParameter({
     parameterLongName: "--playlist",
     argumentName: "PLAYLIST",
     description: "Playlist name"
 })
-clp.addAction(playlistsIdAction)
+clp.addAction(playlistsAction)
 
 const playlistIdAction = new DynamicCommandLineAction({
     actionName: "get-playlist",

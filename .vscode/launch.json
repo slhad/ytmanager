@@ -20,7 +20,7 @@
                 "--playlist",
                 "Destiny 2",
                 "--playlist",
-                "Stream",
+                "Streams",
                 "--language",
                 "fr",
                 "--tag",
@@ -28,7 +28,7 @@
                 "--tag",
                 "dust",
                 "--category",
-                "Video Games"
+                "Gaming"
             ],
             "outFiles": [
                 "${workspaceFolder}/lib/**/*.js",
