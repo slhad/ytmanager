@@ -16,9 +16,19 @@
             "args": [
                 "--pretty",
                 "3",
-                "get-playlist",
+                "set-current-stream",
                 "--playlist",
-                "Destiny 2"
+                "Destiny 2",
+                "--playlist",
+                "Stream",
+                "--language",
+                "fr",
+                "--tag",
+                "farm",
+                "--tag",
+                "dust",
+                "--category",
+                "Video Games"
             ],
             "outFiles": [
                 "${workspaceFolder}/lib/**/*.js",
