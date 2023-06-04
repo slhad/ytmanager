@@ -356,7 +356,12 @@ const act = async () => {
                 languageSub: setCurrentStreamAction.getStringParameter("--language-sub").value,
                 playlists: setCurrentStreamAction.getStringListParameter("--playlist").values.slice(),
                 tags: setCurrentStreamAction.getStringListParameter("--tag").values.slice(),
-                category: setCurrentStreamAction.getStringParameter("--category").value
+                category: setCurrentStreamAction.getStringParameter("--category").value,
+                subject: setCurrentStreamAction.getStringParameter("--subject").value,
+                subjectAddToTags: setCurrentStreamAction.getFlagParameter("subjectAddToTags").value,
+                tagsAddDescription: setCurrentStreamAction.getFlagParameter("tagsAddDescription").value,
+                tagsDescriptionWithHashTag: setCurrentStreamAction.getFlagParameter("tagsDescriptionWithHashtag").value,
+                tagsDescriptionNewLine: setCurrentStreamAction.getFlagParameter("tagsDescriptionNewLine").value
             }
             setCurrentStream(infoStream, params)
             break;
