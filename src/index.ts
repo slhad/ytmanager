@@ -127,7 +127,9 @@ type CurrentStreamSettings = {
     category?: string,
     subject?: string,
     title?: string,
+    _titleOriginal?: string,
     description?: string,
+    _descriptionOrignal?: string,
     subjectBeforeTitle?: boolean,
     subjectAfterTitle?: boolean,
     subjectSeparator?: string,
@@ -300,6 +302,30 @@ const addVideoInPlaylist = async (playlistId: string, videoId: string) => {
     }
 }
 
+const computeSetCurrentStream = (css: CurrentStreamSettings) => {
+    css._titleOriginal = css.title
+    css._descriptionOrignal = css.description
+
+    if (css.subject) {
+        const separator = css.subjectSeparator || " - "
+
+        if (css.subjectBeforeTitle) {
+            css.title = `${css.subject}${separator}${css.title}`
+        }
+
+        if (css.subjectAfterTitle) {
+            css.title = `${css.title}${separator}${css.subject}`
+        }
+
+        if (css.subjectAddToTags) {
+            if (!css.tags) {
+                css.tags = []
+            }
+            css.tags.push(css.subject?.toLowerCase())
+        }
+    }
+}
+
 const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) => {
     log(css, "Raw current stream parameters to set")
 
@@ -308,6 +334,7 @@ const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) 
 
     css.category = categoryId
     css.playlists = playlistsId
+
 
     await updateVideo(stream.video, css)
 
