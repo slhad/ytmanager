@@ -4,6 +4,7 @@ import { google, youtube_v3 } from 'googleapis';
 import { OAuth2Client, Credentials } from 'google-auth-library';
 
 import { DynamicCommandLineAction, DynamicCommandLineParser } from "@rushstack/ts-command-line";
+import { commandLineParser } from "./cmd";
 
 const CONFIG_FILE = "./config.json"
 const CREDS_FILE = "./creds.json"
@@ -123,7 +124,17 @@ type CurrentStreamSettings = {
     languageSub?: string
     playlists?: string[]
     tags?: string[]
-    category?: string
+    category?: string,
+    subject?: string,
+    title?: string,
+    description?: string,
+    subjectBeforeTitle?: boolean,
+    subjectAfterTitle?: boolean,
+    subjectSeparator?: string,
+    subjectAddToTags?: boolean,
+    tagsAddDescription?: boolean,
+    tagsDescriptionWithHashTag?: boolean,
+    tagsDescriptionNewLine?: boolean
 }
 
 const updateVideo = async (video: youtube_v3.Schema$Video, parameters: CurrentStreamSettings) => {
@@ -144,7 +155,8 @@ const updateVideo = async (video: youtube_v3.Schema$Video, parameters: CurrentSt
             if (!update.requestBody.snippet) {
                 update.part?.push("snippet")
                 update.requestBody.snippet = {
-                    title: video.snippet?.title
+                    title: parameters.title || video.snippet?.title,
+                    description: parameters.description || video.snippet?.description
                 }
             }
 
@@ -239,7 +251,7 @@ const askForAuth = () => {
 }
 
 const fetchInfo = async (): Promise<boolean> => {
-    switch (clp.selectedAction?.actionName) {
+    switch (cmd.selectedAction?.actionName) {
         case playlistIdAction.actionName:
             const playlists = await getPlaylists([playlistIdAction.getStringParameter("--playlist").value || ""])
             info((playlists || [])[0]?.id);
@@ -257,12 +269,13 @@ type InfoStream = {
     video: youtube_v3.Schema$Video
 }
 
-const insertVideoIntoPlaylist = async (playlistId: string, videoId: string) => {
+const insertVideoInPlaylist = async (playlistId: string, videoId: string) => {
     const data = await youtube.playlistItems.insert({
         part: ["id", "snippet"],
         requestBody: {
             id: playlistId,
             snippet: {
+                playlistId,
                 resourceId: {
                     kind: "youtube#video",
                     videoId
@@ -270,6 +283,21 @@ const insertVideoIntoPlaylist = async (playlistId: string, videoId: string) => {
             }
         }
     })
+}
+
+const isVideoInPlaylist = async (playlistId: string, videoId: string) => {
+    const data = await youtube.playlistItems.list({
+        part: ["id"],
+        playlistId,
+        videoId
+    })
+    return data && data.data && data.data.items && data.data.items.length > 0
+}
+
+const addVideoInPlaylist = async (playlistId: string, videoId: string) => {
+    if (!await isVideoInPlaylist(playlistId, videoId)) {
+        await insertVideoInPlaylist(playlistId, videoId)
+    }
 }
 
 const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) => {
@@ -285,7 +313,7 @@ const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) 
 
     if (css.playlists && stream.video.id) {
         for (const playlistId of css.playlists) {
-            await insertVideoIntoPlaylist(playlistId, stream.video.id)
+            await addVideoInPlaylist(playlistId, stream.video.id)
         }
     }
 
@@ -308,7 +336,7 @@ const act = async () => {
 
     const infoStream = { liveBroadcast, video }
 
-    switch (clp.selectedAction?.actionName) {
+    switch (cmd.selectedAction?.actionName) {
         case infoAction.actionName:
             info(infoStream);
             break;
@@ -350,105 +378,7 @@ const run = async () => {
 }
 
 
-import { name, description } from "../package.json"
-const clp = new DynamicCommandLineParser({
-    toolFilename: name,
-    toolDescription: description
-})
-
-const verboseFlag = clp.defineFlagParameter({
-    parameterLongName: '--verbose',
-    parameterShortName: '-v',
-    description: 'Verbose logging',
-})
-const prettyFlag = clp.defineIntegerParameter({
-    parameterLongName: '--pretty',
-    parameterShortName: '-p',
-    argumentName: "NUMBER",
-    description: 'Pretty print logging',
-})
-
-const infoAction = new DynamicCommandLineAction({
-    actionName: "info",
-    summary: "Get current stream info",
-    documentation: "Will return broadcast and video info"
-})
-clp.addAction(infoAction)
-
-const setTitleAction = new DynamicCommandLineAction({
-    actionName: "set-title",
-    summary: "Set stream title",
-    documentation: "Set your stream title"
-})
-
-setTitleAction.defineStringParameter({
-    parameterLongName: "--title",
-    argumentName: "TITLE",
-    description: "Title to set"
-})
-
-const playlistsAction = new DynamicCommandLineAction({
-    actionName: "get-playlists",
-    summary: "get playlists",
-    documentation: "Get playlists by name"
-})
-
-playlistsAction.defineStringListParameter({
-    parameterLongName: "--playlist",
-    argumentName: "PLAYLIST",
-    description: "Playlist name"
-})
-clp.addAction(playlistsAction)
-
-const playlistIdAction = new DynamicCommandLineAction({
-    actionName: "get-playlist",
-    summary: "get playlist id",
-    documentation: "Get playlist id by name"
-})
-
-playlistIdAction.defineStringParameter({
-    parameterLongName: "--playlist",
-    argumentName: "PLAYLIST",
-    description: "Playlist name"
-})
-clp.addAction(playlistIdAction)
-
-const setCurrentStreamAction = new DynamicCommandLineAction({
-    actionName: "set-current-stream",
-    summary: "set current stream",
-    documentation: "Set parameters to current stream"
-})
-
-setCurrentStreamAction.defineStringListParameter({
-    parameterLongName: "--playlist",
-    argumentName: "PLAYLIST",
-    description: "Playlist name",
-    environmentVariable: "PLAYLIST"
-})
-setCurrentStreamAction.defineStringParameter({
-    parameterLongName: "--language",
-    argumentName: "LANG",
-    description: "Language name",
-    environmentVariable: "LG"
-})
-setCurrentStreamAction.defineStringParameter({
-    parameterLongName: "--language-sub",
-    argumentName: "LANGSUB",
-    description: "Language subtitle name",
-    environmentVariable: "LG"
-})
-setCurrentStreamAction.defineStringListParameter({
-    parameterLongName: "--tag",
-    argumentName: "TAG",
-    description: "Tag",
-    environmentVariable: "TAG"
-})
-setCurrentStreamAction.defineStringParameter({
-    parameterLongName: "--category",
-    argumentName: "CATEGORY",
-    description: "Category name",
-    environmentVariable: "CATEGORY"
-})
-clp.addAction(setCurrentStreamAction)
-
-clp.execute().then(run)
+const { cmd, flags, actions } = commandLineParser
+const { prettyFlag, verboseFlag } = flags
+const { infoAction, playlistIdAction, playlistsAction, setCurrentStreamAction, setTitleAction } = actions
+cmd.execute().then(run)
