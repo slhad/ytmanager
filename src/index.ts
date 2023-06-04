@@ -136,7 +136,8 @@ type CurrentStreamSettings = {
     subjectAddToTags?: boolean,
     tagsAddDescription?: boolean,
     tagsDescriptionWithHashTag?: boolean,
-    tagsDescriptionNewLine?: boolean
+    tagsDescriptionNewLine?: boolean,
+    tagsDescriptionWhiteSpace?: string
 }
 
 const updateVideo = async (video: youtube_v3.Schema$Video, parameters: CurrentStreamSettings) => {
@@ -148,7 +149,15 @@ const updateVideo = async (video: youtube_v3.Schema$Video, parameters: CurrentSt
     }
 
     if (parameters) {
-        if (parameters.category || parameters.language || parameters.playlists || parameters.tags) {
+        if (
+            parameters.category
+            || parameters.language
+            || parameters.playlists
+            || parameters.tags
+            || parameters.languageSub
+            || parameters.title
+            || parameters.description
+        ) {
 
             if (!update.requestBody) {
                 update.requestBody = {}
@@ -324,6 +333,19 @@ const computeSetCurrentStream = (css: CurrentStreamSettings) => {
             css.tags.push(css.subject?.toLowerCase())
         }
     }
+
+    if (css.tagsAddDescription && css.tags) {
+        if (css.tagsDescriptionNewLine) {
+            css.description += "\n"
+        }
+
+        const hash = css.tagsDescriptionWithHashTag ? "#" : ""
+        const whiteSpaceReplacement = css.tagsDescriptionWhiteSpace ? css.tagsDescriptionWhiteSpace : "_"
+        for (const tag of css.tags) {
+            const cleanTag = tag.replace(/ /g, whiteSpaceReplacement)
+            css.description += ` ${hash}${cleanTag}`
+        }
+    }
 }
 
 const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) => {
@@ -335,6 +357,7 @@ const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) 
     css.category = categoryId
     css.playlists = playlistsId
 
+    computeSetCurrentStream(css)
 
     await updateVideo(stream.video, css)
 
@@ -385,15 +408,19 @@ const act = async () => {
                 tags: setCurrentStreamAction.getStringListParameter("--tag").values.slice(),
                 category: setCurrentStreamAction.getStringParameter("--category").value,
                 subject: setCurrentStreamAction.getStringParameter("--subject").value,
-                subjectAddToTags: setCurrentStreamAction.getFlagParameter("subjectAddToTags").value,
-                tagsAddDescription: setCurrentStreamAction.getFlagParameter("tagsAddDescription").value,
-                tagsDescriptionWithHashTag: setCurrentStreamAction.getFlagParameter("tagsDescriptionWithHashtag").value,
-                tagsDescriptionNewLine: setCurrentStreamAction.getFlagParameter("tagsDescriptionNewLine").value
+                subjectAddToTags: setCurrentStreamAction.getFlagParameter("--subject-add-to-tags").value,
+                subjectBeforeTitle: setCurrentStreamAction.getFlagParameter("--subject-before-title").value,
+                subjectAfterTitle: setCurrentStreamAction.getFlagParameter("--subject-after-title").value,
+                subjectSeparator: setCurrentStreamAction.getStringParameter("--subject-separator").value,
+                tagsAddDescription: setCurrentStreamAction.getFlagParameter("--tags-add-description").value,
+                tagsDescriptionWithHashTag: setCurrentStreamAction.getFlagParameter("--tags-description-with-hashtag").value,
+                tagsDescriptionNewLine: setCurrentStreamAction.getFlagParameter("--tags-description-new-line").value,
+                tagsDescriptionWhiteSpace: setCurrentStreamAction.getStringParameter("--tags-description-white-space").value
             }
             setCurrentStream(infoStream, params)
             break;
         default:
-            info("No action given");
+            console.log(cmd.renderHelpText());
     }
 }
 

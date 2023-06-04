@@ -105,40 +105,45 @@ setCurrentStreamAction.defineStringParameter({
     environmentVariable: "SUBJECT"
 })
 setCurrentStreamAction.defineFlagParameter({
-    parameterLongName: "--subjectBeforeTitle",
+    parameterLongName: "--subject-before-title",
     description: "Add subject before title",
     environmentVariable: "SUBJECT_BEFORE_TITLE"
 })
 setCurrentStreamAction.defineFlagParameter({
-    parameterLongName: "--subjectAfterTitle",
+    parameterLongName: "--subject-after-title",
     description: "Add subject after title",
     environmentVariable: "SUBJECT_AFTER_TITLE"
 })
 setCurrentStreamAction.defineStringParameter({
-    parameterLongName: "--subjectSeparator",
+    parameterLongName: "--subject-separator",
     argumentName: "SEPARATOR",
     description: "Subject separator",
     environmentVariable: "SUBJECT_SEPARATOR"
 })
 setCurrentStreamAction.defineFlagParameter({
-    parameterLongName: "--subjectAddToTags",
+    parameterLongName: "--subject-add-to-tags",
     description: "Add subject to tags",
     environmentVariable: "SUBJECT_ADD_TAGS"
 })
 setCurrentStreamAction.defineFlagParameter({
-    parameterLongName: "--tagsAddDescription",
+    parameterLongName: "--tags-add-description",
     description: "Add tags to description",
     environmentVariable: "TAGS_ADD_DESCRIPTION"
 })
 setCurrentStreamAction.defineFlagParameter({
-    parameterLongName: "--tagsDescriptionWithHashtag",
+    parameterLongName: "--tags-description-with-hashtag",
     description: "Add # to tags in description",
     environmentVariable: "TAGS_DESCRIPTION_WITH_HASHTAG"
 })
 setCurrentStreamAction.defineFlagParameter({
-    parameterLongName: "--tagsDescriptionNewLine",
+    parameterLongName: "--tags-description-new-line",
     description: "Tags in description on new line",
     environmentVariable: "TAGS_DESCRIPTION_NEW_LINE"
+})
+setCurrentStreamAction.defineFlagParameter({
+    parameterLongName: "--tags-description-white-space",
+    description: "Tags space replacement in description",
+    environmentVariable: "TAGS_DESCRIPTION_WHITE_SPACE"
 })
 clp.addAction(setCurrentStreamAction)
 

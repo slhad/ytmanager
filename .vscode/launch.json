@@ -7,7 +7,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "YTManager",
+            "name": "Run YTManager",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -33,6 +33,24 @@
                 "farm",
                 "--category",
                 "Gaming"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Help",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "-h"
             ],
             "outFiles": [
                 "${workspaceFolder}/lib/**/*.js",
