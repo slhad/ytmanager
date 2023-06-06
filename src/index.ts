@@ -340,7 +340,7 @@ const computeSetCurrentStream = (css: CurrentStreamSettings) => {
         }
 
         const hash = css.tagsDescriptionWithHashTag ? "#" : ""
-        const whiteSpaceReplacement = css.tagsDescriptionWhiteSpace ? css.tagsDescriptionWhiteSpace : "_"
+        const whiteSpaceReplacement = css.tagsDescriptionWhiteSpace ? css.tagsDescriptionWhiteSpace : ""
         for (const tag of css.tags) {
             const cleanTag = tag.replace(/ /g, whiteSpaceReplacement)
             css.description += ` ${hash}${cleanTag}`
@@ -402,6 +402,8 @@ const act = async () => {
             break;
         case setCurrentStreamAction.actionName:
             const params: CurrentStreamSettings = {
+                title: setCurrentStreamAction.getStringParameter("--title").value,
+                description: setCurrentStreamAction.getStringParameter("--description").value,
                 language: setCurrentStreamAction.getStringParameter("--language").value,
                 languageSub: setCurrentStreamAction.getStringParameter("--language-sub").value,
                 playlists: setCurrentStreamAction.getStringListParameter("--playlist").values.slice(),

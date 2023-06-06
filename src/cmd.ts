@@ -140,10 +140,23 @@ setCurrentStreamAction.defineFlagParameter({
     description: "Tags in description on new line",
     environmentVariable: "TAGS_DESCRIPTION_NEW_LINE"
 })
-setCurrentStreamAction.defineFlagParameter({
+setCurrentStreamAction.defineStringParameter({
     parameterLongName: "--tags-description-white-space",
+    argumentName: "WHITE_SPACE",
     description: "Tags space replacement in description",
     environmentVariable: "TAGS_DESCRIPTION_WHITE_SPACE"
+})
+setCurrentStreamAction.defineStringParameter({
+    parameterLongName: "--title",
+    argumentName: "TITLE",
+    description: "Title to set",
+    environmentVariable: "TITLE"
+})
+setCurrentStreamAction.defineStringParameter({
+    parameterLongName: "--description",
+    argumentName: "DESCRIPTION",
+    description: "Description to set",
+    environmentVariable: "DESCRIPTION"
 })
 clp.addAction(setCurrentStreamAction)
 
