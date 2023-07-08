@@ -182,10 +182,25 @@ const updateVideo = async (video: youtube_v3.Schema$Video, parameters: CurrentSt
 
             if (parameters.category) {
                 update.requestBody.snippet.categoryId = parameters.category
+            } else {
+                update.requestBody.snippet.categoryId = video.snippet?.categoryId
             }
 
             if (parameters.tags) {
                 update.requestBody.snippet.tags = parameters.tags
+                if (parameters.tags.some((tag) => tag.toLocaleLowerCase() === "mature")) {
+                    // TODO find a wait to make google/youtube accept modification on contentRating.ytRating 
+                    update.part?.push("contentDetails")
+
+                    if (!update.requestBody.contentDetails) {
+                        update.requestBody.contentDetails = {}
+                    }
+
+                    if (!update.requestBody.contentDetails.contentRating) {
+                        update.requestBody.contentDetails.contentRating = {}
+                    }
+                    update.requestBody.contentDetails.contentRating.ytRating = "ytAgeRestricted"
+                }
             }
 
             await youtube.videos.update(update)
@@ -207,7 +222,7 @@ const getLiveBroadcast = async () => {
 
 const getVideo = async (videoId: string) => {
     const { data } = await youtube.videos.list({
-        part: ["id", "snippet", "statistics"],
+        part: ["id", "snippet", "statistics", "contentDetails"],
         id: [videoId]
     });
     log(data, "Video list")
@@ -235,8 +250,17 @@ const getPlaylists = async (playlistNames: string[]): Promise<{ id: string, name
         .map((playlist) => { return { id: playlist.id || "", name: playlist.snippet?.title || "" } })
 }
 
-const getPlaylistsId = async (playlistNames: string[]): Promise<string[]> => {
+const getPlaylistsId = async (playlistNames: string[], upsert = false): Promise<string[]> => {
     const playlists = await getPlaylists(playlistNames)
+    if (upsert) {
+        for (const name of playlistNames) {
+            let playlist = playlists.find(p => p.name)
+            if (!playlist) {
+                playlist = await upsertPlaylist(name)
+                playlists.push(playlist)
+            }
+        }
+    }
     return playlists.map((playlist) => playlist.id)
 }
 
@@ -311,6 +335,23 @@ const addVideoInPlaylist = async (playlistId: string, videoId: string) => {
     }
 }
 
+const upsertPlaylist = async (playlistName: string) => {
+    const playlists = await getPlaylists([playlistName])
+    let playlist = playlists && playlists[0]
+    if (!playlist) {
+        const newPlaylist = await youtube.playlists.insert({
+            part: ["snippet"],
+            requestBody: {
+                snippet: {
+                    title: playlistName
+                }
+            }
+        })
+        playlist = { id: newPlaylist.data.id || "", name: playlistName }
+    }
+    return playlist
+}
+
 const computeSetCurrentStream = (css: CurrentStreamSettings) => {
     css._titleOriginal = css.title
     css._descriptionOrignal = css.description
@@ -352,7 +393,7 @@ const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) 
     log(css, "Raw current stream parameters to set")
 
     const categoryId = css.category ? await getCategoryId(css.category) : undefined
-    const playlistsId = css.playlists ? await getPlaylistsId(css.playlists) : undefined
+    const playlistsId = css.playlists ? await getPlaylistsId(css.playlists, true) : undefined
 
     css.category = categoryId
     css.playlists = playlistsId

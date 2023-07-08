@@ -31,8 +31,52 @@
                 "dust",
                 "--tag",
                 "farm",
+                "--tag",
+                "mature",
                 "--category",
                 "Gaming"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Test mature tag",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "--pretty",
+                "3",
+                "set-current-stream",
+                "--tag",
+                "mature"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Get stream info",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "--pretty",
+                "3",
+                "info"
             ],
             "outFiles": [
                 "${workspaceFolder}/lib/**/*.js",
