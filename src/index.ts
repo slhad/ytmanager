@@ -1,10 +1,13 @@
 import express from "express";
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, statSync } from "fs";
+import { join } from 'path';
 import { google, youtube_v3 } from 'googleapis';
 import { OAuth2Client, Credentials } from 'google-auth-library';
 
-import { DynamicCommandLineAction, DynamicCommandLineParser } from "@rushstack/ts-command-line";
 import { commandLineParser } from "./cmd";
+const { cmd, flags, actions } = commandLineParser
+const { prettyFlag, verboseFlag } = flags
+const { infoAction, playlistIdAction, playlistsAction, setCurrentStreamAction, setTitleAction, setCurrentThumbnailAction } = actions
 
 const CONFIG_FILE = "./config.json"
 const CREDS_FILE = "./creds.json"
@@ -410,6 +413,33 @@ const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) 
 
 }
 
+const setCurrentThumbnail = async (video: youtube_v3.Schema$Video, image: any) => {
+    const params: youtube_v3.Params$Resource$Thumbnails$Set = {
+        videoId: video.id || "",
+        media: {
+            body: image
+        }
+    }
+    await youtube.thumbnails.set(params)
+}
+
+const fetchImage = (pathObj: string, isDir = false) => {
+    if (isDir) {
+        const allowedType = ["png", "jpeg", "jpg"]
+        const dirContent = readdirSync(pathObj)
+        const lastFile = dirContent
+            .filter((nameFile) => allowedType.includes(nameFile.toLocaleLowerCase().split(".").slice(-1)[0]))
+            .sort((a, b) => {
+                const a2 = statSync(join(pathObj, a)).mtimeMs
+                const b2 = statSync(join(pathObj, b)).mtimeMs
+                return a2 > b2 ? 1 : (a2 < b2 ? -1 : 0)
+            })[0]
+        pathObj = join(pathObj, lastFile)
+
+    }
+    return readFileSync(pathObj)
+}
+
 
 const act = async () => {
     if (await fetchInfo()) {
@@ -462,6 +492,14 @@ const act = async () => {
             }
             setCurrentStream(infoStream, params)
             break;
+        case setCurrentThumbnailAction.actionName:
+            const dir = setCurrentThumbnailAction.getStringParameter("--path-dir").value
+            const file = setCurrentThumbnailAction.getStringParameter("--path-file").value
+            if (file || dir) {
+                const dataImage = fetchImage(file || dir || "", !!file)
+                await setCurrentThumbnail(video, dataImage)
+            }
+            break;
         default:
             console.log(cmd.renderHelpText());
     }
@@ -479,8 +517,4 @@ const run = async () => {
     }
 }
 
-
-const { cmd, flags, actions } = commandLineParser
-const { prettyFlag, verboseFlag } = flags
-const { infoAction, playlistIdAction, playlistsAction, setCurrentStreamAction, setTitleAction } = actions
 cmd.execute().then(run)

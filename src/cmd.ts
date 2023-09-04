@@ -160,6 +160,27 @@ setCurrentStreamAction.defineStringParameter({
 })
 clp.addAction(setCurrentStreamAction)
 
+const setCurrentThumbnailAction = new DynamicCommandLineAction({
+    actionName: "set-current-thumbnail",
+    summary: "set current thumbnail",
+    documentation: "Set thumbnail to current stream"
+})
+
+setCurrentThumbnailAction.defineStringParameter({
+    parameterLongName: "--path-file",
+    argumentName: "PATH_FILE",
+    description: "File path of the thumbnail",
+    environmentVariable: "PATH_FILE"
+})
+
+setCurrentThumbnailAction.defineStringParameter({
+    parameterLongName: "--path-dir",
+    argumentName: "PATH_DIR",
+    description: "Dir path of the thumbnail, will take most recent supported file",
+    environmentVariable: "PATH_DIR"
+})
+clp.addAction(setCurrentThumbnailAction)
+
 export const commandLineParser = {
     cmd: clp,
     flags: {
@@ -171,6 +192,7 @@ export const commandLineParser = {
         playlistsAction,
         playlistIdAction,
         infoAction,
-        setCurrentStreamAction
+        setCurrentStreamAction,
+        setCurrentThumbnailAction
     }
 }
