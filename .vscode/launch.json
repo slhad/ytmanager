@@ -67,6 +67,30 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Set thumbnail",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "-v",
+                "--pretty",
+                "3",
+                "set-current-thumbnail",
+                "--auto-recompress-on-limit",
+                "--path-dir",
+                "D:\\videos\\stream"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Get stream info",
             "skipFiles": [
                 "<node_internals>/**"

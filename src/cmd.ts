@@ -179,6 +179,12 @@ setCurrentThumbnailAction.defineStringParameter({
     description: "Dir path of the thumbnail, will take most recent supported file",
     environmentVariable: "PATH_DIR"
 })
+
+setCurrentThumbnailAction.defineFlagParameter({
+    parameterLongName: "--auto-recompress-on-limit",
+    description: `Auto recompress image if Youtube thumbnail limit is reached`,
+    environmentVariable: "AUTO_RECOMPRESS_ON_LIMIT"
+})
 clp.addAction(setCurrentThumbnailAction)
 
 export const commandLineParser = {

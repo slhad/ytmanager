@@ -19,8 +19,10 @@
   "homepage": "https://github.com/slhad/ytmanager#readme",
   "dependencies": {
     "@rushstack/ts-command-line": "^4.13.2",
+    "@types/imagemin-pngquant": "^8.0.0",
     "express": "^4.18.2",
     "googleapis": "^114.0.0",
+    "imagemin-pngquant": "^9.0.2",
     "typescript": "^5.0.3"
   },
   "devDependencies": {

@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, readdirSync, statSync } from "fs";
 import { join } from 'path';
 import { google, youtube_v3 } from 'googleapis';
 import { OAuth2Client, Credentials } from 'google-auth-library';
+import imageminPngquant from "imagemin-pngquant"
 
 import { commandLineParser } from "./cmd";
 const { cmd, flags, actions } = commandLineParser
@@ -11,6 +12,8 @@ const { infoAction, playlistIdAction, playlistsAction, setCurrentStreamAction, s
 
 const CONFIG_FILE = "./config.json"
 const CREDS_FILE = "./creds.json"
+
+const YOUTUBE_THUMBNAIL_SIZE_LIMIT = 2097152
 
 type Config = { code: string; tokens: Credentials }
 
@@ -423,21 +426,28 @@ const setCurrentThumbnail = async (video: youtube_v3.Schema$Video, image: any) =
     await youtube.thumbnails.set(params)
 }
 
-const fetchImage = (pathObj: string, isDir = false) => {
+const fetchFile = (pathObj: string, allowedType: string[], isDir = false) => {
     if (isDir) {
-        const allowedType = ["png", "jpeg", "jpg"]
         const dirContent = readdirSync(pathObj)
         const lastFile = dirContent
             .filter((nameFile) => allowedType.includes(nameFile.toLocaleLowerCase().split(".").slice(-1)[0]))
             .sort((a, b) => {
                 const a2 = statSync(join(pathObj, a)).mtimeMs
                 const b2 = statSync(join(pathObj, b)).mtimeMs
-                return a2 > b2 ? 1 : (a2 < b2 ? -1 : 0)
+                return a2 < b2 ? 1 : (a2 > b2 ? -1 : 0)
             })[0]
         pathObj = join(pathObj, lastFile)
-
     }
+    log({ path: pathObj }, "File path")
     return readFileSync(pathObj)
+}
+
+const fetchImage = (pathObj: string, isDir = false) => {
+    return fetchFile(pathObj, ["png", "jpeg", "jpg"], isDir)
+}
+
+const fetchVideo = (pathObj: string, isDir = false) => {
+    return fetchFile(pathObj, ["mkv", "mp4", "mov", "avi"], isDir)
 }
 
 
@@ -495,8 +505,23 @@ const act = async () => {
         case setCurrentThumbnailAction.actionName:
             const dir = setCurrentThumbnailAction.getStringParameter("--path-dir").value
             const file = setCurrentThumbnailAction.getStringParameter("--path-file").value
+            const autoRecompress = setCurrentThumbnailAction.getFlagParameter("--auto-recompress-on-limit").value
             if (file || dir) {
-                const dataImage = fetchImage(file || dir || "", !!file)
+                let dataImage = fetchImage(file || dir || "", !file && !!dir)
+
+                if (dataImage.length > YOUTUBE_THUMBNAIL_SIZE_LIMIT) {
+                    log({ imgSize: dataImage.length, youtubeThumbnailLimit: YOUTUBE_THUMBNAIL_SIZE_LIMIT }, "Thumbnail size is bigger than youtube api limit for thumbnail")
+                    if (autoRecompress) {
+                        dataImage = await imageminPngquant({
+                            speed: 1
+                        })(dataImage)
+                        log({ imgSize: dataImage.length, youtubeThumbnailLimit: YOUTUBE_THUMBNAIL_SIZE_LIMIT }, "Recompressed thumbnail with slowest speed")
+                    } else {
+                        log({ autoRecompress }, "Auto recompression disabled")
+                    }
+
+                }
+
                 await setCurrentThumbnail(video, dataImage)
             }
             break;
