@@ -8,7 +8,15 @@ import imageminPngquant from "imagemin-pngquant"
 import { commandLineParser } from "./cmd";
 const { cmd, flags, actions } = commandLineParser
 const { prettyFlag, verboseFlag } = flags
-const { infoAction, playlistIdAction, playlistsAction, setCurrentStreamAction, setTitleAction, setCurrentThumbnailAction } = actions
+const {
+    infoAction,
+    playlistIdAction,
+    playlistsAction,
+    setCurrentStreamAction,
+    setTitleAction,
+    setCurrentThumbnailAction,
+    updateDockRedirectAction
+} = actions
 
 const CONFIG_FILE = "./config.json"
 const CREDS_FILE = "./creds.json"
@@ -502,7 +510,7 @@ const act = async () => {
             }
             setCurrentStream(infoStream, params)
             break;
-        case setCurrentThumbnailAction.actionName:
+        case setCurrentThumbnailAction.actionName: {
             const dir = setCurrentThumbnailAction.getStringParameter("--path-dir").value
             const file = setCurrentThumbnailAction.getStringParameter("--path-file").value
             const autoRecompress = setCurrentThumbnailAction.getFlagParameter("--auto-recompress-on-limit").value
@@ -525,6 +533,19 @@ const act = async () => {
                 await setCurrentThumbnail(video, dataImage)
             }
             break;
+        }
+        case updateDockRedirectAction.actionName: {
+            const file = updateDockRedirectAction.getStringParameter("--path-file").value
+            if (file) {
+                const isWaitingPage = updateDockRedirectAction.getFlagParameter("--waiting-redirect").value
+                const refreshTime = updateDockRedirectAction.getIntegerParameter("--refresh-time").value
+                const videoId = infoStream.video.id
+                const linkVideo = `;URL=https://studio.youtube.com/live_chat?is_popout=1&v=${videoId}`
+                const redirectPage = `<html><head><meta http-equiv="refresh" content="${refreshTime}${isWaitingPage ? "" : linkVideo}"></head></html>`
+                writeFileSync(file, redirectPage)
+            }
+            break
+        }
         default:
             console.log(cmd.renderHelpText());
     }

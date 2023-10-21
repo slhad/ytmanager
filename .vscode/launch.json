@@ -91,6 +91,53 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Update comments dock",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "-v",
+                "--pretty",
+                "3",
+                "update-dock-redirect",
+                "--path-file",
+                "D:\\videos\\obs-content\\assets\\yt.html"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Update comments dock to waiting",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "-v",
+                "--pretty",
+                "3",
+                "update-dock-redirect",
+                "--waiting-redirect",
+                "--path-file",
+                "D:\\videos\\obs-content\\assets\\yt.html"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Get stream info",
             "skipFiles": [
                 "<node_internals>/**"

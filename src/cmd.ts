@@ -187,6 +187,36 @@ setCurrentThumbnailAction.defineFlagParameter({
 })
 clp.addAction(setCurrentThumbnailAction)
 
+const updateDockRedirectAction = new DynamicCommandLineAction({
+    actionName: "update-dock-redirect",
+    summary: "Update html redirect page dock to youtube chat",
+    documentation: "Update html redirect page dock to youtube chat"
+})
+
+updateDockRedirectAction.defineStringParameter({
+    parameterLongName: "--path-file",
+    argumentName: "PATH_FILE",
+    description: "File path of the page dock",
+    environmentVariable: "PATH_FILE"
+})
+
+updateDockRedirectAction.defineFlagParameter({
+    parameterLongName: "--waiting-redirect",
+    description: "Generate a html page redirecting to itself, usefull if YT stream is not launched yet or has finished",
+    environmentVariable: "WAITING_REDIRECT"
+})
+
+updateDockRedirectAction.defineIntegerParameter({
+    parameterLongName: "--refresh-time",
+    argumentName: "REFRESH_TIME",
+    description: "Refresh page after X seconds",
+    environmentVariable: "REFRESH_TIME",
+    defaultValue: 15
+})
+
+clp.addAction(updateDockRedirectAction)
+
+
 export const commandLineParser = {
     cmd: clp,
     flags: {
@@ -199,6 +229,7 @@ export const commandLineParser = {
         playlistIdAction,
         infoAction,
         setCurrentStreamAction,
-        setCurrentThumbnailAction
+        setCurrentThumbnailAction,
+        updateDockRedirectAction
     }
 }
