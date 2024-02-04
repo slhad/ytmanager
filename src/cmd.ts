@@ -5,11 +5,18 @@ const clp = new DynamicCommandLineParser({
     toolDescription: description
 })
 
+const historyFlag = clp.defineFlagParameter({
+    parameterLongName: '--history',
+    parameterShortName: '-H',
+    description: 'Save in a list what parameters you set to your current stream'
+})
+
 const verboseFlag = clp.defineFlagParameter({
     parameterLongName: '--verbose',
     parameterShortName: '-v',
     description: 'Verbose logging',
 })
+
 const prettyFlag = clp.defineIntegerParameter({
     parameterLongName: '--pretty',
     parameterShortName: '-p',
@@ -221,7 +228,8 @@ export const commandLineParser = {
     cmd: clp,
     flags: {
         verboseFlag,
-        prettyFlag
+        prettyFlag,
+        historyFlag
     },
     actions: {
         setTitleAction,
