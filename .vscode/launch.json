@@ -7,13 +7,14 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Run YTManager",
+            "name": "Set-current-stream",
             "skipFiles": [
                 "<node_internals>/**"
             ],
             "preLaunchTask": "npm: build",
             "program": "${workspaceFolder}/src/index.ts",
             "args": [
+                "-H",
                 "--pretty",
                 "3",
                 "set-current-stream",
@@ -35,6 +36,67 @@
                 "mature",
                 "--category",
                 "Gaming"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Update settings lib",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "-H",
+                "stream-settings",
+                "--vertical-link-offset",
+                "1"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Upload verticals",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "-H",
+                "verticals-upload"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Vertical-saved",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "-H",
+                "--pretty",
+                "3",
+                "vertical-saved"
             ],
             "outFiles": [
                 "${workspaceFolder}/lib/**/*.js",
@@ -98,12 +160,35 @@
             "preLaunchTask": "npm: build",
             "program": "${workspaceFolder}/src/index.ts",
             "args": [
+                "-H",
                 "-v",
                 "--pretty",
                 "3",
                 "update-dock-redirect",
                 "--path-file",
                 "D:\\videos\\obs-content\\assets\\yt.html"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Update timestamps",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "-H",
+                "-v",
+                "--pretty",
+                "3",
+                "set-timestamps"
             ],
             "outFiles": [
                 "${workspaceFolder}/lib/**/*.js",
@@ -164,8 +249,11 @@
             ],
             "preLaunchTask": "npm: build",
             "program": "${workspaceFolder}/src/index.ts",
+            "env": {
+                "cmdv": "v2"
+            },
             "args": [
-                "-h"
+                "--help"
             ],
             "outFiles": [
                 "${workspaceFolder}/lib/**/*.js",

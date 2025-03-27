@@ -6,22 +6,22 @@ const clp = new DynamicCommandLineParser({
 })
 
 const historyFlag = clp.defineFlagParameter({
-    parameterLongName: '--history',
-    parameterShortName: '-H',
-    description: 'Save in a list what parameters you set to your current stream'
+    parameterLongName: "--history",
+    parameterShortName: "-H",
+    description: "Save your stream and vertical info if queried/updated"
 })
 
 const verboseFlag = clp.defineFlagParameter({
-    parameterLongName: '--verbose',
-    parameterShortName: '-v',
-    description: 'Verbose logging',
+    parameterLongName: "--verbose",
+    parameterShortName: "-v",
+    description: "Verbose logging",
 })
 
 const prettyFlag = clp.defineIntegerParameter({
-    parameterLongName: '--pretty',
-    parameterShortName: '-p',
+    parameterLongName: "--pretty",
+    parameterShortName: "-p",
     argumentName: "NUMBER",
-    description: 'Pretty print logging',
+    description: "Pretty print logging",
 })
 
 const infoAction = new DynamicCommandLineAction({
@@ -68,6 +68,75 @@ playlistIdAction.defineStringParameter({
     description: "Playlist name"
 })
 clp.addAction(playlistIdAction)
+
+const verticalSavedAction = new DynamicCommandLineAction({
+    actionName: "vertical-saved",
+    summary: "lookup and link saved vertical to current stream",
+    documentation: "Look for a vertical saved in the vertical folder and link it to current stream"
+})
+clp.addAction(verticalSavedAction)
+
+const verticalInfoAction = new DynamicCommandLineAction({
+    actionName: "vertical-info",
+    summary: "update last saved vertical linked to current stream with info",
+    documentation: "Update info of last vertical linked to current stream with info"
+})
+verticalInfoAction.defineStringParameter({
+    parameterLongName: "--title",
+    argumentName: "TITLE",
+    description: "Title to set"
+})
+verticalInfoAction.defineStringParameter({
+    parameterLongName: "--description",
+    argumentName: "DESCRIPTION",
+    description: "Description to set"
+})
+clp.addAction(verticalInfoAction)
+
+const verticalsUpload = new DynamicCommandLineAction({
+    actionName: "verticals-upload",
+    summary: "Upload your vertical to YT",
+    documentation: "Use it to upload your vertical to YT"
+})
+clp.addAction(verticalsUpload)
+
+const reconstructStreamsFromVerticals = new DynamicCommandLineAction({
+    actionName: "reconstruct-streams-from-verticals",
+    summary: "WIP - It will try to look at your saved verticals no in library to guess a YT stream and save them in library",
+    documentation: "Use it reconstruct library from verticals"
+})
+clp.addAction(reconstructStreamsFromVerticals)
+
+
+const streamSettingsAction = new DynamicCommandLineAction({
+    actionName: "stream-settings",
+    summary: "Change stream settings",
+    documentation: "Use this command to change the settings"
+})
+clp.addAction(streamSettingsAction)
+streamSettingsAction.defineStringParameter({
+    parameterLongName: "--vertical-path",
+    argumentName: "VERTICAL_PATH",
+    description: "Change the lookup path for verticals"
+})
+streamSettingsAction.defineChoiceParameter({
+    alternatives: ["public", "unlisted", "private"],
+    parameterLongName: "--vertical-visibility",
+    description: "Set the visibility of the vertical",
+    environmentVariable: "VERTICAL_VISIBILITY"
+})
+streamSettingsAction.defineChoiceParameter({
+    alternatives: ["true", "false"],
+    parameterLongName: "--vertical-add-link-to-video",
+    description: "Add a video link to the vertical",
+    environmentVariable: "ADD_LINK_TO_VIDEO"
+})
+streamSettingsAction.defineIntegerParameter({
+    parameterLongName: "--vertical-link-offset",
+    argumentName: "VERTICAL_LINK_OFFSET",
+    description: "Offset of the video link in the vertical",
+    environmentVariable: "VERTICAL_LINK_OFFSET"
+})
 
 const setCurrentStreamAction = new DynamicCommandLineAction({
     actionName: "set-current-stream",
@@ -167,6 +236,19 @@ setCurrentStreamAction.defineStringParameter({
 })
 clp.addAction(setCurrentStreamAction)
 
+const setTimestampsAction = new DynamicCommandLineAction({
+    actionName: "set-timestamps",
+    summary: "Set timestamps",
+    documentation: "Set timestamps"
+})
+setTimestampsAction.defineStringParameter({
+    parameterLongName: "--timestamp-title",
+    argumentName: "TIMESTAMP_TITLE",
+    description: "Timestamp in description",
+    environmentVariable: "TIMESTAMP_TITLE"
+})
+clp.addAction(setTimestampsAction)
+
 const setCurrentThumbnailAction = new DynamicCommandLineAction({
     actionName: "set-current-thumbnail",
     summary: "set current thumbnail",
@@ -189,7 +271,7 @@ setCurrentThumbnailAction.defineStringParameter({
 
 setCurrentThumbnailAction.defineFlagParameter({
     parameterLongName: "--auto-recompress-on-limit",
-    description: `Auto recompress image if Youtube thumbnail limit is reached`,
+    description: "Auto recompress image if Youtube thumbnail limit is reached",
     environmentVariable: "AUTO_RECOMPRESS_ON_LIMIT"
 })
 clp.addAction(setCurrentThumbnailAction)
@@ -235,6 +317,11 @@ export const commandLineParser = {
         setTitleAction,
         playlistsAction,
         playlistIdAction,
+        verticalInfoAction,
+        verticalSavedAction,
+        verticalsUpload,
+        streamSettingsAction,
+        setTimestampsAction,
         infoAction,
         setCurrentStreamAction,
         setCurrentThumbnailAction,

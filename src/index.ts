@@ -1,21 +1,29 @@
-import express from "express";
-import { readFileSync, writeFileSync, readdirSync, statSync } from "fs";
-import { join } from 'path';
-import { google, youtube_v3 } from 'googleapis';
-import { OAuth2Client, Credentials } from 'google-auth-library';
+#!/usr/bin/env node
+
+import express from "express"
+import { readFileSync, writeFileSync, readdirSync, statSync, createReadStream } from "fs"
+import { join } from "path"
+import { google, youtube_v3 } from "googleapis"
+import { OAuth2Client, Credentials } from "google-auth-library"
 import imageminPngquant from "imagemin-pngquant"
 
-import { commandLineParser } from "./cmd";
+import { commandLineParser } from "./cmd"
+import { StreamLibrary, convertStreamToVerticalInfo, conversionVideoToStreamInfo, Vertical, StreamLib } from "./persistence"
 const { cmd, flags, actions } = commandLineParser
-const { prettyFlag, verboseFlag } = flags
+const { prettyFlag, verboseFlag, historyFlag } = flags
 const {
     infoAction,
     playlistIdAction,
     playlistsAction,
+    verticalInfoAction,
+    verticalSavedAction,
+    verticalsUpload,
     setCurrentStreamAction,
     setTitleAction,
     setCurrentThumbnailAction,
-    updateDockRedirectAction
+    updateDockRedirectAction,
+    streamSettingsAction,
+    setTimestampsAction
 } = actions
 
 const CONFIG_FILE = "./config.json"
@@ -23,12 +31,12 @@ const CREDS_FILE = "./creds.json"
 
 const YOUTUBE_THUMBNAIL_SIZE_LIMIT = 2097152
 
-type Config = { code: string; tokens: Credentials }
+type Config = { code: string, tokens: Credentials }
 
 let verbose = false
 let pretty: number | undefined = undefined
 
-const log = (obj: any, msg?: string) => {
+const log = (obj: unknown, msg?: string) => {
     if (verbose) {
         const data = JSON.stringify(obj, undefined, pretty)
         const prefix = msg ? `${msg} : ` : ""
@@ -36,7 +44,7 @@ const log = (obj: any, msg?: string) => {
     }
 }
 
-const info = (obj: any) => {
+const info = (obj: unknown) => {
     console.log(JSON.stringify(obj, undefined, pretty))
 }
 
@@ -54,14 +62,14 @@ const getConfig = () => {
 
 
 const extractPathCallback = (redirectURI: string) => {
-    const url = new URL(redirectURI);
-    const path = url.pathname;
-    return path;
+    const url = new URL(redirectURI)
+    const path = url.pathname
+    return path
 }
 
 const extractPort = (redirectURI: string) => {
-    const url = new URL(redirectURI);
-    const port = url.port;
+    const url = new URL(redirectURI)
+    const port = url.port
     return port != "" ? parseInt(port) : 80
 }
 
@@ -89,22 +97,22 @@ const oAuth2Client = new OAuth2Client({
     clientId: client_id,
     clientSecret: client_secret,
     redirectUri: redirect_uris[0]
-});
+})
 
 const authorizeUrl = oAuth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: 'https://www.googleapis.com/auth/youtube.force-ssl',
+    access_type: "offline",
+    scope: "https://www.googleapis.com/auth/youtube.force-ssl",
     redirect_uri: redirect_uris[0]
-});
+})
 
 const setCreds = async (tokens: Credentials) => {
-    oAuth2Client.setCredentials(tokens);
+    oAuth2Client.setCredentials(tokens)
 }
 
 const youtube = google.youtube({
-    version: 'v3',
+    version: "v3",
     auth: oAuth2Client
-});
+})
 
 const setTitleStream = async (liveBroadcast: youtube_v3.Schema$LiveBroadcast, streamTitle: string) => {
     if (liveBroadcast) {
@@ -129,9 +137,53 @@ const setTitleStream = async (liveBroadcast: youtube_v3.Schema$LiveBroadcast, st
             }
         }
         log(update, "Update livebroadcast title")
-        youtube.liveBroadcasts.update(update);
+        youtube.liveBroadcasts.update(update)
     }
 }
+
+const uploadVerticalsToYoutube = async (verticals: Vertical[], verticalConfig: StreamLib["verticalsOptions"]) => {
+    for (const vertical of verticals) {
+
+        const description = vertical.description.toLowerCase().includes("#shorts")
+            ? vertical.description
+            : `${vertical.description} #shorts`
+
+        const videoRequestBody: youtube_v3.Schema$Video = {
+            snippet: {
+                title: vertical.title,
+                description: description,
+                tags: vertical.tags,
+                categoryId: vertical.categoryId || "20"
+            },
+            status: {
+                privacyStatus: verticalConfig.visibility
+            }
+        }
+
+        const media = {
+            body: createReadStream(join(verticalConfig.path, vertical.name))
+        }
+
+        try {
+            const response = await youtube.videos.insert({
+                part: ["snippet", "status"],
+                requestBody: videoRequestBody,
+                media: media,
+            })
+
+            if (response.data.id) {
+                console.log(`Uploaded vertical ${vertical.name} with video ID: ${response.data.id}`)
+                vertical.uploaded = true
+                vertical.id = response.data.id
+            } else {
+                console.error(`Failed to upload vertical ${vertical.name}`)
+            }
+        } catch (error) {
+            console.error(`Error uploading vertical ${vertical.name}:`, error)
+        }
+    }
+}
+
 
 type CurrentStreamSettings = {
     language?: string
@@ -151,7 +203,9 @@ type CurrentStreamSettings = {
     tagsAddDescription?: boolean,
     tagsDescriptionWithHashTag?: boolean,
     tagsDescriptionNewLine?: boolean,
-    tagsDescriptionWhiteSpace?: string
+    tagsDescriptionWhiteSpace?: string,
+    timestampsTitle?: string
+    timestamps?: string
 }
 
 const updateVideo = async (video: youtube_v3.Schema$Video, parameters: CurrentStreamSettings) => {
@@ -179,9 +233,20 @@ const updateVideo = async (video: youtube_v3.Schema$Video, parameters: CurrentSt
 
             if (!update.requestBody.snippet) {
                 update.part?.push("snippet")
-                update.requestBody.snippet = {
-                    title: parameters.title || video.snippet?.title,
-                    description: parameters.description || video.snippet?.description
+
+                if (!update.requestBody.snippet && video.snippet) {
+                    update.requestBody.snippet = video.snippet
+                }
+
+                if (update.requestBody.snippet) {
+                    update.requestBody.snippet.title = parameters.title || video.snippet?.title
+                    update.requestBody.snippet.description = parameters.description || video.snippet?.description
+
+                } else {
+                    update.requestBody.snippet = {
+                        title: parameters.title || video.snippet?.title,
+                        description: parameters.description || video.snippet?.description
+                    }
                 }
             }
 
@@ -196,8 +261,6 @@ const updateVideo = async (video: youtube_v3.Schema$Video, parameters: CurrentSt
 
             if (parameters.category) {
                 update.requestBody.snippet.categoryId = parameters.category
-            } else {
-                update.requestBody.snippet.categoryId = video.snippet?.categoryId
             }
 
             if (parameters.tags) {
@@ -228,7 +291,7 @@ const getLiveBroadcast = async () => {
         part: ["id", "snippet", "status", "contentDetails"],
         mine: true,
         maxResults: 1,
-        broadcastType: 'all'
+        broadcastType: "all"
     })
     log(data, "Livebroadcast list")
     return data.items && data.items[0] || {}
@@ -238,9 +301,9 @@ const getVideo = async (videoId: string) => {
     const { data } = await youtube.videos.list({
         part: ["id", "snippet", "statistics", "contentDetails"],
         id: [videoId]
-    });
+    })
     log(data, "Video list")
-    return data.items && data.items[0] || {};
+    return data.items && data.items[0] || {}
 }
 
 const getCategoryId = async (categoryName: string, regionCode = "fr") => {
@@ -257,9 +320,9 @@ const getPlaylists = async (playlistNames: string[]): Promise<{ id: string, name
         part: ["id", "snippet"],
         mine: true,
         maxResults: 100
-    });
+    })
     log(data, "Playlist list")
-    const playlists = data.items && data.items || [];
+    const playlists = data.items && data.items || []
     return playlists.filter((playlist) => playlistNames.find((name) => playlist.snippet?.title === name))
         .map((playlist) => { return { id: playlist.id || "", name: playlist.snippet?.title || "" } })
 }
@@ -279,32 +342,33 @@ const getPlaylistsId = async (playlistNames: string[], upsert = false): Promise<
 }
 
 const askForAuth = () => {
-    const app = express();
+    const app = express()
     const port = extractPort(redirect_uris[0])
     const pathCallback = extractPathCallback(redirect_uris[0])
 
     const listener = app.listen(port, () => {
         console.log(`Server listening at http://localhost:${port}`)
-    });
+    })
 
     app.get(pathCallback, async (req, res) => {
         const code = req.query.code as string
-        const { tokens } = await oAuth2Client.getToken(code);
-        oAuth2Client.setCredentials(tokens);
-        res.send('OAuth2Client authorized successfully!')
+        const { tokens } = await oAuth2Client.getToken(code)
+        oAuth2Client.setCredentials(tokens)
+        res.send("OAuth2Client authorized successfully!")
         saveConfig({ code, tokens })
         console.log("Code from google auth saved")
         listener.close()
-    });
+    })
     console.log(`Please open this url to authorize the connection with your google application from creds.json file : ${authorizeUrl}`)
 }
 
 const fetchInfo = async (): Promise<boolean> => {
     switch (cmd.selectedAction?.actionName) {
-        case playlistIdAction.actionName:
+        case playlistIdAction.actionName: {
             const playlists = await getPlaylists([playlistIdAction.getStringParameter("--playlist").value || ""])
-            info((playlists || [])[0]?.id);
+            info((playlists || [])[0]?.id)
             return true
+        }
         case playlistsAction.actionName:
             info(await getPlaylists(playlistIdAction.getStringListParameter("--playlist").values.slice() || []))
             return true
@@ -319,7 +383,7 @@ type InfoStream = {
 }
 
 const insertVideoInPlaylist = async (playlistId: string, videoId: string) => {
-    const data = await youtube.playlistItems.insert({
+    await youtube.playlistItems.insert({
         part: ["id", "snippet"],
         requestBody: {
             id: playlistId,
@@ -390,6 +454,7 @@ const computeSetCurrentStream = (css: CurrentStreamSettings) => {
     }
 
     if (css.tagsAddDescription && css.tags) {
+        css.description += "\n"
         if (css.tagsDescriptionNewLine) {
             css.description += "\n"
         }
@@ -424,7 +489,22 @@ const setCurrentStream = async (stream: InfoStream, css: CurrentStreamSettings) 
 
 }
 
-const setCurrentThumbnail = async (video: youtube_v3.Schema$Video, image: any) => {
+const updateDescription = async (video: youtube_v3.Schema$Video, css: CurrentStreamSettings) => {
+    css.description = css.description || video.snippet?.description || ""
+    const timestampsTitle = css.timestampsTitle || "Timestamps :\n"
+
+    if (css.timestamps && !new RegExp(timestampsTitle, "i").test(css.description)) {
+        const firstLine = css.timestamps.split("\n")[0]
+        css.description += "\n\n"
+        if (/[0-9]+/g.test(firstLine)) {
+            css.description += timestampsTitle
+        }
+        css.description += css.timestamps
+        await updateVideo(video, css)
+    }
+}
+
+const setCurrentThumbnail = async (video: youtube_v3.Schema$Video, image: unknown) => {
     const params: youtube_v3.Params$Resource$Thumbnails$Set = {
         videoId: video.id || "",
         media: {
@@ -465,31 +545,115 @@ const act = async () => {
         return
     }
 
+    const historyEnabled = historyFlag.value ? StreamLibrary.load() : undefined
+
     const liveBroadcast = await getLiveBroadcast()
-    let video: youtube_v3.Schema$Video;
+    let video: youtube_v3.Schema$Video
     if (liveBroadcast.id) {
         video = await getVideo(liveBroadcast.id) || {}
+        historyEnabled?.addStream(conversionVideoToStreamInfo(video, liveBroadcast))?.save()
     } else {
-        video = undefined as any
+        video = undefined as never
     }
 
     const infoStream = { liveBroadcast, video }
 
     switch (cmd.selectedAction?.actionName) {
         case infoAction.actionName:
-            info(infoStream);
-            break;
+            info(infoStream)
+            break
         case setTitleAction.actionName:
             setTitleStream(liveBroadcast, setTitleAction.getStringParameter("--title").value || "")
-            break;
+            break
         case playlistIdAction.actionName:
-            const playlists = await getPlaylists([playlistIdAction.getStringParameter("--playlist").value || ""])
-            info((playlists || [])[0]?.id);
-            break;
+            {
+                const playlists = await getPlaylists([playlistIdAction.getStringParameter("--playlist").value || ""])
+                info((playlists || [])[0]?.id)
+                break
+            }
         case playlistsAction.actionName:
             info(await getPlaylists(playlistIdAction.getStringListParameter("--playlist").values.slice() || []))
-            break;
-        case setCurrentStreamAction.actionName:
+            break
+        case verticalSavedAction.actionName:
+            {
+                if (!historyEnabled) break
+                const lastVertical = historyEnabled.findLastVertical()
+                if (lastVertical) {
+                    const stream = historyEnabled.lib.streams[video.id || ""]
+                    const vertical = convertStreamToVerticalInfo(stream, lastVertical)
+                    historyEnabled.addVerticalToStream(stream.id, vertical)
+                    historyEnabled.save()
+                }
+
+                break
+            }
+        case verticalInfoAction.actionName:
+            {
+                if (!historyEnabled) break
+
+                const stream = historyEnabled.lib.streams[video.id || ""]
+                const last = Object.keys(stream.verticals).sort()[0]
+                const vertical = stream.verticals[last]
+
+                for (const key of ["title", "description"] as const) {
+                    const value = verticalInfoAction.getStringParameter(key).value
+                    if (value) {
+                        vertical[key] = value
+                    }
+                }
+
+                historyEnabled.save()
+
+                break
+            }
+        case streamSettingsAction.actionName: {
+            if (!historyEnabled) break
+
+            const vp = streamSettingsAction.getStringParameter("--vertical-path").value
+            if (vp) {
+                historyEnabled.lib.verticalsOptions.path = vp
+            }
+
+            const vl = streamSettingsAction.getChoiceParameter("--vertical-add-link-to-video").value
+            if (vl) {
+                historyEnabled.lib.verticalsOptions.addLinkToVideo = vl === "true"
+            }
+
+            const vo = streamSettingsAction.getIntegerParameter("--vertical-link-offset").value
+            if (vo) {
+                historyEnabled.lib.verticalsOptions.offsetLinkToVideoInSeconds = vo
+            }
+
+            const vv = streamSettingsAction.getChoiceParameter("--vertical-visibility").value
+            if (vv) {
+                historyEnabled.lib.verticalsOptions.visibility = vv as "public" | "unlisted" | "private"
+            }
+
+            historyEnabled.save()
+
+            break
+        }
+        case verticalsUpload.actionName: {
+            if (!historyEnabled) break
+
+            const verticals = historyEnabled.getUnuploadedVerticals()
+            await uploadVerticalsToYoutube(verticals, historyEnabled.lib.verticalsOptions)
+            break
+        }
+        case setTimestampsAction.actionName: {
+            if (!historyEnabled) break
+            const videoId = video.id || ""
+            const timestampsData = readFileSync(historyEnabled.lib.timestampsPath).toString()
+            historyEnabled.addTimestampsToStream(videoId, timestampsData)
+            historyEnabled.save()
+            const stream = historyEnabled.lib.streams[videoId]
+            const params: CurrentStreamSettings = {
+                timestamps: stream.timestamps
+            }
+            await updateDescription(infoStream.video, params)
+            break
+        }
+        case setCurrentStreamAction.actionName: {
             const params: CurrentStreamSettings = {
                 title: setCurrentStreamAction.getStringParameter("--title").value,
                 description: setCurrentStreamAction.getStringParameter("--description").value,
@@ -509,7 +673,8 @@ const act = async () => {
                 tagsDescriptionWhiteSpace: setCurrentStreamAction.getStringParameter("--tags-description-white-space").value
             }
             setCurrentStream(infoStream, params)
-            break;
+            break
+        }
         case setCurrentThumbnailAction.actionName: {
             const dir = setCurrentThumbnailAction.getStringParameter("--path-dir").value
             const file = setCurrentThumbnailAction.getStringParameter("--path-file").value
@@ -532,7 +697,7 @@ const act = async () => {
 
                 await setCurrentThumbnail(video, dataImage)
             }
-            break;
+            break
         }
         case updateDockRedirectAction.actionName: {
             const file = updateDockRedirectAction.getStringParameter("--path-file").value
@@ -547,14 +712,14 @@ const act = async () => {
             break
         }
         default:
-            console.log(cmd.renderHelpText());
+            console.log(cmd.renderHelpText())
     }
 }
 
 
 const run = async () => {
     if (!tokens || !(code && code !== "")) {
-        askForAuth();
+        askForAuth()
     } else {
         setCreds(tokens)
         verbose = verboseFlag.value
