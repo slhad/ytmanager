@@ -18,6 +18,7 @@ const {
     verticalInfoAction,
     verticalSavedAction,
     verticalsUpload,
+    setLiveStreamAction,
     setCurrentStreamAction,
     setTitleAction,
     setCurrentThumbnailAction,
@@ -538,6 +539,38 @@ const fetchVideo = (pathObj: string, isDir = false) => {
     return fetchFile(pathObj, ["mkv", "mp4", "mov", "avi"], isDir)
 }
 
+const setLiveStreamInfo = async (livebroadcast: youtube_v3.Schema$LiveBroadcast, title?: string, description?: string) => {
+    const changed = !!(title || description)
+    if (changed) {
+        const params: youtube_v3.Params$Resource$Livebroadcasts$Update = {
+            part: ["id", "snippet", "status"],
+            requestBody: {
+                id: livebroadcast.id,
+                snippet: {
+                    scheduledStartTime: livebroadcast.snippet?.scheduledStartTime
+                },
+                status: {
+                    privacyStatus: livebroadcast.status?.privacyStatus,
+                }
+            }
+        }
+        if (title) {
+            params.requestBody!.snippet!.title = title
+        }
+        if (description) {
+            params.requestBody!.snippet!.description = description
+        }
+        if (livebroadcast.id) {
+            const res = await youtube.liveBroadcasts.update(params)
+            console.log("Live broadcast updated:", JSON.stringify(res.data))
+        } else {
+            console.log("No live broadcast found")
+        }
+    }else{
+        console.log("No data to change in title or description")
+    }
+}
+
 
 const act = async () => {
     if (await fetchInfo()) {
@@ -559,6 +592,9 @@ const act = async () => {
     const infoStream = { liveBroadcast, video }
 
     switch (cmd.selectedAction?.actionName) {
+        case setLiveStreamAction.actionName:
+            await setLiveStreamInfo(liveBroadcast, setLiveStreamAction.getStringParameter("--title").value, setLiveStreamAction.getStringParameter("--description").value)
+            break
         case infoAction.actionName:
             info(infoStream)
             break

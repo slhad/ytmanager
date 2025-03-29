@@ -46,6 +46,31 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "set-live-stream",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "preLaunchTask": "npm: build",
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "-H",
+                "--pretty",
+                "3",
+                "set-live-stream",=
+                "--title",
+                "test title",
+                "--description",
+                "test description"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Update settings lib",
             "skipFiles": [
                 "<node_internals>/**"

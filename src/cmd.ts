@@ -42,6 +42,26 @@ setTitleAction.defineStringParameter({
     argumentName: "TITLE",
     description: "Title to set"
 })
+clp.addAction(setTitleAction)
+
+const setLiveStreamAction = new DynamicCommandLineAction({
+    actionName: "set-live-stream",
+    summary: "Set live stream info",
+    documentation: "Set your live stream info"
+})
+
+setLiveStreamAction.defineStringParameter({
+    parameterLongName: "--title",
+    argumentName: "TITLE",
+    description: "Title to set"
+})
+
+setLiveStreamAction.defineStringParameter({
+    parameterLongName: "--description",
+    argumentName: "DESCRIPTION",
+    description: "Description to set"
+})
+clp.addAction(setLiveStreamAction)
 
 const playlistsAction = new DynamicCommandLineAction({
     actionName: "get-playlists",
@@ -314,6 +334,7 @@ export const commandLineParser = {
         historyFlag
     },
     actions: {
+        setLiveStreamAction,
         setTitleAction,
         playlistsAction,
         playlistIdAction,
