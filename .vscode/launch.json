@@ -56,7 +56,7 @@
                 "-H",
                 "--pretty",
                 "3",
-                "set-live-stream",=
+                "set-live-stream",
                 "--title",
                 "test title",
                 "--description",
