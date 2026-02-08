@@ -65,7 +65,7 @@ export const createServer = (ctx: Context): Express => {
                             if (param.type === "boolean") value = value === "true"
                             // Handle list?
                             if (param.type === "stringList" && !Array.isArray(value)) {
-                                value = [value]
+                                value = (value as string).split(",").map(v => v.trim())
                             }
                         }
                     } else {

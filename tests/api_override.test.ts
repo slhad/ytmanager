@@ -11,6 +11,8 @@ const createMockService = () => {
     return {
         setTitleStream: mock().mockResolvedValue({ success: true }),
         setLiveStreamInfo: mock().mockResolvedValue({ success: true }),
+        setCurrentStream: mock().mockResolvedValue({ success: true }),
+        getVideo: mock().mockResolvedValue({ id: "video-123", snippet: { title: "Title" } }),
         uploadVerticalsToYoutube: mock().mockResolvedValue({ uploadedCount: 1 }),
         getLiveBroadcast: mock().mockResolvedValue({ id: "123" }),
     } as unknown as YouTubeService
@@ -88,6 +90,29 @@ describe("API Method Override", () => {
         // Signature: (broadcast, title, description)
         expect(calls[0][1]).toBe("New Title")
         expect(calls[0][2]).toBe("New Description")
+    })
+
+    it("should allow PUT via GET override for set-current-stream with stringList (tag=pve,pvp,go)", async () => {
+        const response = await request(app)
+            .get("/api/stream/current")
+            .query({
+                _method: "PUT",
+                tag: "pve,pvp,go",
+                title: "Gaming Stream"
+            })
+
+        expect(response.status).toBe(200)
+        expect(response.body.success).toBe(true)
+        expect(mockContext.service.setCurrentStream).toHaveBeenCalled()
+
+        // Verify params were passed to the service
+        const calls = (mockContext.service.setCurrentStream as any).mock.calls
+        // Signature: (contextData, settings)
+        // contextData is { liveBroadcast, video }
+        // settings is the second argument
+        const settings = calls[0][1]
+        expect(settings.tags).toEqual(["pve", "pvp", "go"])
+        expect(settings.title).toBe("Gaming Stream")
     })
 
     it("should NOT trigger override if _method is missing", async () => {
