@@ -22,6 +22,9 @@ export const createServer = (ctx: Context): Express => {
     // Endpoint discovery
     app.get("/api/endpoints", (req, res) => {
         res.json({
+            usage: {
+                methodOverride: "For actions requiring POST/PUT/DELETE, you can use GET with ?_method=METHOD query parameter (e.g., ?_method=POST)."
+            },
             endpoints: [
                 { method: "GET", path: "/health", description: "Health check" },
                 { method: "GET", path: "/api/endpoints", description: "List all endpoints" },
@@ -39,17 +42,21 @@ export const createServer = (ctx: Context): Express => {
     actions.forEach(action => {
         if (!action.api || !action.api.path) return
 
-        const method = (action.api.method || "GET").toLowerCase() as "get" | "post" | "put" | "delete"
+        const originalMethod = (action.api.method || "GET").toLowerCase() as "get" | "post" | "put" | "delete"
         const path = `/api${action.api.path}`
 
-        app[method](path, asyncHandler(async (req, res) => {
+        const handler = asyncHandler(async (req, res) => {
             const params: Record<string, any> = {}
+            const isOverride = req.method === "GET" && req.query._method === originalMethod.toUpperCase()
+            const effectiveMethod = isOverride ? originalMethod : (req.method.toLowerCase() as "get" | "post" | "put" | "delete")
 
             // Extract parameters
             if (action.parameters) {
                 action.parameters.forEach(param => {
                     let value = undefined
-                    if (method === "get") {
+
+                    // If it's a real GET or a fake GET (override), look in query
+                    if (req.method === "GET") {
                         value = req.query[param.name]
 
                         // Handle conversion for query params
@@ -62,7 +69,7 @@ export const createServer = (ctx: Context): Express => {
                             }
                         }
                     } else {
-                        // Body parameters
+                        // Body parameters for real POST/PUT/DELETE
                         // Try both exact name and camelCase
                         value = req.body[param.name]
                         if (value === undefined) {
@@ -87,7 +94,20 @@ export const createServer = (ctx: Context): Express => {
                 console.error(`Error in action ${action.name}:`, error)
                 res.status(500).json({ success: false, error: error.message })
             }
-        }))
+        })
+
+        // Register the primary route
+        app[originalMethod](path, handler)
+
+        // If the primary route is not GET, also register a GET route for overrides
+        if (originalMethod !== "get") {
+            app.get(path, (req, res, next) => {
+                if (req.query._method === originalMethod.toUpperCase()) {
+                    return handler(req, res, next)
+                }
+                next()
+            })
+        }
     })
 
     return app
