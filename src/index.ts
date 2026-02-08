@@ -9,6 +9,7 @@ import imageminPngquant from "imagemin-pngquant"
 
 import { commandLineParser } from "./cmd"
 import { StreamLibrary, convertStreamToVerticalInfo, conversionVideoToStreamInfo, Vertical, StreamLib } from "./persistence"
+import { startServer, setApiContext } from "./api/server"
 const { cmd, flags, actions } = commandLineParser
 const { prettyFlag, verboseFlag, historyFlag } = flags
 const {
@@ -24,7 +25,8 @@ const {
     setCurrentThumbnailAction,
     updateDockRedirectAction,
     streamSettingsAction,
-    setTimestampsAction
+    setTimestampsAction,
+    serveAction
 } = actions
 
 const CONFIG_FILE = "./config.json"
@@ -365,6 +367,39 @@ const askForAuth = () => {
 
 const fetchInfo = async (): Promise<boolean> => {
     switch (cmd.selectedAction?.actionName) {
+        case serveAction.actionName: {
+            const port = serveAction.getIntegerParameter("--port").value ?? 3001
+            const host = serveAction.getStringParameter("--host").value ?? "localhost"
+
+            // Initialize the API context with all necessary functions
+            setApiContext({
+                getLiveBroadcast,
+                getVideo,
+                getPlaylists,
+                getPlaylistsId,
+                setTitleStream,
+                setLiveStreamInfo,
+                setCurrentStream,
+                setCurrentThumbnail,
+                updateDescription,
+                uploadVerticalsToYoutube,
+                fetchImage,
+                getCategoryId,
+                addVideoInPlaylist,
+                streamLibrary: {
+                    load: () => StreamLibrary.load(),
+                    getLib: (lib: unknown) => (lib as StreamLibrary).lib,
+                    save: (lib: unknown) => (lib as StreamLibrary).save(),
+                    findLastVertical: (lib: unknown) => (lib as StreamLibrary).findLastVertical(),
+                    getUnuploadedVerticals: (lib: unknown) => (lib as StreamLibrary).getUnuploadedVerticals()
+                },
+                conversionVideoToStreamInfo,
+                convertStreamToVerticalInfo
+            })
+
+            startServer(port, host)
+            return true
+        }
         case playlistIdAction.actionName: {
             const playlists = await getPlaylists([playlistIdAction.getStringParameter("--playlist").value || ""])
             info((playlists || [])[0]?.id)
@@ -566,7 +601,7 @@ const setLiveStreamInfo = async (livebroadcast: youtube_v3.Schema$LiveBroadcast,
         } else {
             console.log("No live broadcast found")
         }
-    }else{
+    } else {
         console.log("No data to change in title or description")
     }
 }

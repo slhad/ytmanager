@@ -5,3 +5,5 @@ node_modules
 lib
 tmp
 streamLib.json
+dist
+dist/ytmanager.exe

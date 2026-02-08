@@ -325,6 +325,29 @@ updateDockRedirectAction.defineIntegerParameter({
 
 clp.addAction(updateDockRedirectAction)
 
+const serveAction = new DynamicCommandLineAction({
+    actionName: "serve",
+    summary: "Start REST API server",
+    documentation: "Start a local REST API server to access ytmanager features via HTTP endpoints"
+})
+
+serveAction.defineIntegerParameter({
+    parameterLongName: "--port",
+    parameterShortName: "-P",
+    argumentName: "PORT",
+    description: "Port to run the API server on",
+    defaultValue: 3001
+})
+
+serveAction.defineStringParameter({
+    parameterLongName: "--host",
+    argumentName: "HOST",
+    description: "Host to bind the API server to",
+    defaultValue: "localhost"
+})
+
+clp.addAction(serveAction)
+
 
 export const commandLineParser = {
     cmd: clp,
@@ -346,6 +369,7 @@ export const commandLineParser = {
         infoAction,
         setCurrentStreamAction,
         setCurrentThumbnailAction,
-        updateDockRedirectAction
+        updateDockRedirectAction,
+        serveAction
     }
 }
