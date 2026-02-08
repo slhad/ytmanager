@@ -1,98 +1,13 @@
+
 import { describe, it, expect } from "@jest/globals"
+import { extractPathCallback, extractPort } from "../src/auth"
+import { YouTubeService, CurrentStreamSettings } from "../src/service"
 
-// Since index.ts has side effects (reads config files on import), we need to test
-// the pure functions by extracting their logic. For now, we'll test the logic
-// that can be extracted or reimplemented for testing.
-
-// Test helper functions that mirror the logic in index.ts
-// These are re-implementations of the pure functions for testing purposes
-
-/**
- * Extracts the path from a redirect URI
- * Mirrors: extractPathCallback in index.ts
- */
-const extractPathCallback = (redirectURI: string): string => {
-    const url = new URL(redirectURI)
-    const path = url.pathname
-    return path
-}
-
-/**
- * Extracts the port from a redirect URI, defaulting to 80 if not specified
- * Mirrors: extractPort in index.ts
- */
-const extractPort = (redirectURI: string): number => {
-    const url = new URL(redirectURI)
-    const port = url.port
-    return port !== "" ? parseInt(port) : 80
-}
-
-/**
- * Settings type for stream configuration
- */
-type CurrentStreamSettings = {
-    language?: string
-    languageSub?: string
-    playlists?: string[]
-    tags?: string[]
-    category?: string
-    subject?: string
-    title?: string
-    _titleOriginal?: string
-    description?: string
-    _descriptionOrignal?: string
-    subjectBeforeTitle?: boolean
-    subjectAfterTitle?: boolean
-    subjectSeparator?: string
-    subjectAddToTags?: boolean
-    tagsAddDescription?: boolean
-    tagsDescriptionWithHashTag?: boolean
-    tagsDescriptionNewLine?: boolean
-    tagsDescriptionWhiteSpace?: string
-    timestampsTitle?: string
-    timestamps?: string
-}
-
-/**
- * Computes stream settings by modifying title/description based on subject and tags
- * Mirrors: computeSetCurrentStream in index.ts
- */
-const computeSetCurrentStream = (css: CurrentStreamSettings): void => {
-    css._titleOriginal = css.title
-    css._descriptionOrignal = css.description
-
-    if (css.subject) {
-        const separator = css.subjectSeparator || " - "
-
-        if (css.subjectBeforeTitle) {
-            css.title = `${css.subject}${separator}${css.title}`
-        }
-
-        if (css.subjectAfterTitle) {
-            css.title = `${css.title}${separator}${css.subject}`
-        }
-
-        if (css.subjectAddToTags) {
-            if (!css.tags) {
-                css.tags = []
-            }
-            css.tags.push(css.subject?.toLowerCase())
-        }
-    }
-
-    if (css.tagsAddDescription && css.tags) {
-        css.description += "\n"
-        if (css.tagsDescriptionNewLine) {
-            css.description += "\n"
-        }
-
-        const hash = css.tagsDescriptionWithHashTag ? "#" : ""
-        const whiteSpaceReplacement = css.tagsDescriptionWhiteSpace ? css.tagsDescriptionWhiteSpace : ""
-        for (const tag of css.tags) {
-            const cleanTag = tag.replace(/ /g, whiteSpaceReplacement)
-            css.description += ` ${hash}${cleanTag}`
-        }
-    }
+// Helper to access computeSetCurrentStream
+const computeSetCurrentStream = (css: CurrentStreamSettings) => {
+    // We can pass null as auth since computeSetCurrentStream doesn't use it
+    const service = new YouTubeService(null)
+    service.computeSetCurrentStream(css)
 }
 
 // Unit tests for extractPathCallback function
