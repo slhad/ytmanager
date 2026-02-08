@@ -1,5 +1,6 @@
 
-import { describe, it, expect, beforeEach, jest } from "@jest/globals"
+
+import { describe, it, expect, beforeEach, mock, spyOn } from "bun:test"
 import request from "supertest"
 import { createServer } from "../src/api/server"
 import { Context } from "../src/context"
@@ -10,7 +11,7 @@ import type { Express } from "express"
 // Create a mock Service
 const createMockService = () => {
     return {
-        getLiveBroadcast: jest.fn<() => Promise<any>>().mockResolvedValue({
+        getLiveBroadcast: mock().mockResolvedValue({
             id: "broadcast-123",
             snippet: {
                 title: "Test Stream",
@@ -21,7 +22,7 @@ const createMockService = () => {
                 privacyStatus: "public"
             }
         }),
-        getVideo: jest.fn<(videoId: string) => Promise<any>>().mockResolvedValue({
+        getVideo: mock().mockResolvedValue({
             id: "video-123",
             snippet: {
                 title: "Test Video",
@@ -30,27 +31,27 @@ const createMockService = () => {
                 categoryId: "20"
             }
         }),
-        getPlaylists: jest.fn<(names: string[]) => Promise<{ id: string, name: string }[]>>().mockResolvedValue([
+        getPlaylists: mock().mockResolvedValue([
             { id: "playlist-1", name: "Gaming" },
             { id: "playlist-2", name: "Live" }
         ]),
-        getPlaylistsId: jest.fn<(names: string[]) => Promise<string[]>>().mockResolvedValue(["playlist-1", "playlist-2"]),
-        setTitleStream: jest.fn<(liveBroadcast: any, title: string) => Promise<void>>().mockResolvedValue(undefined),
-        setLiveStreamInfo: jest.fn<(liveBroadcast: any, title?: string, description?: string) => Promise<void>>().mockResolvedValue(undefined),
-        setCurrentStream: jest.fn<(stream: any, settings: any) => Promise<void>>().mockResolvedValue(undefined),
-        setCurrentThumbnail: jest.fn<(video: any, image: any) => Promise<void>>().mockResolvedValue(undefined),
-        updateDescription: jest.fn<(video: any, settings: any) => Promise<void>>().mockResolvedValue(undefined),
-        uploadVerticalsToYoutube: jest.fn<(verticals: any[], options: any) => Promise<void>>().mockResolvedValue(undefined),
-        fetchImage: jest.fn<(path: string, isDir?: boolean) => Buffer>().mockReturnValue(Buffer.from("fake-image-data")),
-        getCategoryId: jest.fn<(name: string, regionCode?: string) => Promise<string | undefined>>().mockResolvedValue("20"),
-        addVideoInPlaylist: jest.fn<(playlistId: string, videoId: string) => Promise<void>>().mockResolvedValue(undefined),
-        computeSetCurrentStream: jest.fn(),
-        updateVideo: jest.fn(),
-        upsertPlaylist: jest.fn(),
-        insertVideoInPlaylist: jest.fn(),
-        isVideoInPlaylist: jest.fn(),
-        fetchFile: jest.fn(),
-        fetchVideo: jest.fn()
+        getPlaylistsId: mock().mockResolvedValue(["playlist-1", "playlist-2"]),
+        setTitleStream: mock().mockResolvedValue(undefined),
+        setLiveStreamInfo: mock().mockResolvedValue(undefined),
+        setCurrentStream: mock().mockResolvedValue(undefined),
+        setCurrentThumbnail: mock().mockResolvedValue(undefined),
+        updateDescription: mock().mockResolvedValue(undefined),
+        uploadVerticalsToYoutube: mock().mockResolvedValue(undefined),
+        fetchImage: mock().mockReturnValue(Buffer.from("fake-image-data")),
+        getCategoryId: mock().mockResolvedValue("20"),
+        addVideoInPlaylist: mock().mockResolvedValue(undefined),
+        computeSetCurrentStream: mock(),
+        updateVideo: mock(),
+        upsertPlaylist: mock(),
+        insertVideoInPlaylist: mock(),
+        isVideoInPlaylist: mock(),
+        fetchFile: mock(),
+        fetchVideo: mock()
     } as unknown as YouTubeService
 }
 
@@ -68,13 +69,13 @@ const createMockLibrary = () => {
             },
             timestampsPath: "/tmp/timestamps"
         },
-        save: jest.fn(),
-        findLastVertical: jest.fn().mockReturnValue("vertical-1.mp4"),
-        getUnuploadedVerticals: jest.fn().mockReturnValue([{ name: "v1.mp4", uploaded: false }]),
-        addStream: jest.fn(),
-        addVerticalToStream: jest.fn(),
-        addTimestampsToStream: jest.fn(),
-        getLib: jest.fn()
+        save: mock(),
+        findLastVertical: mock().mockReturnValue("vertical-1.mp4"),
+        getUnuploadedVerticals: mock().mockReturnValue([{ name: "v1.mp4", uploaded: false }]),
+        addStream: mock(),
+        addVerticalToStream: mock(),
+        addTimestampsToStream: mock(),
+        getLib: mock()
     } as unknown as StreamLibrary
 }
 
@@ -223,9 +224,9 @@ describe("API Server", () => {
 
         describe("PUT /api/stream/timestamps", () => {
             it("should update timestamps", async () => {
-                // We need to mock fs.readFileSync for this test as the handler reads from file
+                // We need to write a dummy file since the handler reads from file
                 const fs = require('fs')
-                jest.spyOn(fs, 'readFileSync').mockReturnValue("00:00 Intro")
+                fs.writeFileSync("/tmp/timestamps", "00:00 Intro")
 
                 const response = await request(app)
                     .put("/api/stream/timestamps")

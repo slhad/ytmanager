@@ -1,5 +1,5 @@
 
-import { describe, it, expect } from "@jest/globals"
+import { describe, it, expect } from "bun:test"
 import { extractPathCallback, extractPort } from "../src/auth"
 import { YouTubeService, CurrentStreamSettings } from "../src/service"
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "@jest/globals"
+import { describe, it, expect, beforeEach } from "bun:test"
 import {
     extractAndCompareDateTime,
     conversionVideoToStreamInfo,
@@ -10,6 +10,11 @@ import {
     StreamLib
 } from "../src/persistence"
 import { youtube_v3 } from "googleapis"
+import { Settings } from "luxon"
+
+// Force timezone to Europe/Paris for consistent testing of local file times
+Settings.defaultZone = "Europe/Paris"
+
 
 const fileNameTime = "2024-03-24_13-38-36"
 
