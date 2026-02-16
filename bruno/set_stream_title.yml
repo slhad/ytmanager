@@ -1,0 +1,19 @@
+info:
+  name: Set Stream Title
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/stream/title"
+  auth: inherit
+  headers:
+    Content-Type: application/json
+  body: |
+    {"title":"My Stream Title"}
+
+settings:
+  encodeUrl: false
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -285,6 +285,26 @@
                 "!**/node_modules/**",
                 "!codes.json"
             ]
+        },
+        {
+            "type": "node",
+            "runtimeExecutable": "bun",
+            "request": "launch",
+            "name": "Serve",
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/src/index.ts",
+            "args": [
+                "--verbose",
+                "serve",
+            ],
+            "outFiles": [
+                "${workspaceFolder}/lib/**/*.js",
+                "!**/node_modules/**",
+                "!codes.json"
+            ]
         }
     ]
 }

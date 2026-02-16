@@ -447,7 +447,7 @@ export const actions: ActionDefinition[] = [
             // This is handled specially in CLI runner usually, but if called via action...
             // The server starter needs to be seperate
             const port = params.port || 3001
-            const host = params.host || "localhost"
+            const host = params.host || "0.0.0.0"
 
             // Dynamic import to avoid circular dependency if server imports actions
             const { startServer } = await import("./api/server")

@@ -2,6 +2,8 @@
 
 import { describe, it, expect, beforeEach, mock, spyOn } from "bun:test"
 import request from "supertest"
+const os = require("os")
+const path = require("path")
 import { createServer } from "../src/api/server"
 import { Context } from "../src/context"
 import { YouTubeService } from "../src/service"
@@ -67,7 +69,7 @@ const createMockLibrary = () => {
                     }
                 }
             },
-            timestampsPath: "/tmp/timestamps"
+            timestampsPath: path.join(os.tmpdir(), "timestamps")
         },
         save: mock(),
         findLastVertical: mock().mockReturnValue("vertical-1.mp4"),
@@ -226,7 +228,8 @@ describe("API Server", () => {
             it("should update timestamps", async () => {
                 // We need to write a dummy file since the handler reads from file
                 const fs = require('fs')
-                fs.writeFileSync("/tmp/timestamps", "00:00 Intro")
+                const tsPath = path.join(os.tmpdir(), "timestamps")
+                fs.writeFileSync(tsPath, "00:00 Intro")
 
                 const response = await request(app)
                     .put("/api/stream/timestamps")

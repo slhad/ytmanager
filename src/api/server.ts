@@ -10,9 +10,45 @@ const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => P
     }
 }
 
+// Safely stringify objects for logging with truncation and binary detection
+const safeStringify = (obj: any, maxLen = 2048): string => {
+    try {
+        if (obj === undefined) return ""
+        if (Buffer.isBuffer(obj)) return `<Buffer length=${obj.length}>`
+        const s = typeof obj === "string" ? obj : JSON.stringify(obj)
+        if (!s) return ""
+        return s.length > maxLen ? s.slice(0, maxLen) + "..." : s
+    } catch (e) {
+        return "[unserializable]"
+    }
+}
+
 export const createServer = (ctx: Context): Express => {
     const app = express()
     app.use(express.json())
+
+    // Verbose request logging middleware — logs method, path, status and latency
+    app.use((req: Request, res: Response, next: NextFunction) => {
+        if (!ctx.verbose) return next()
+
+        const start = Date.now()
+        const contentType = (req.headers["content-type"] || "").toString()
+        const isBinary = contentType.includes("multipart/form-data") || contentType.startsWith("image/") || contentType.startsWith("video/")
+
+        res.on("finish", () => {
+            const duration = Date.now() - start
+            const queryStr = req.query && Object.keys(req.query).length ? ` query=${safeStringify(req.query, 512)}` : ""
+            const bodyStr = isBinary ? " body=<skipped-binary>" : (req.body ? ` body=${safeStringify(req.body, 2048)}` : "")
+            console.log(`[API] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms${queryStr}${bodyStr}`)
+        })
+
+        next()
+    })
+
+    // Inform at startup if verbose logging is enabled
+    if (ctx.verbose) {
+        console.log("[API] Verbose request logging ENABLED")
+    }
 
     // Health check
     app.get("/health", (req, res) => {
@@ -116,6 +152,6 @@ export const createServer = (ctx: Context): Express => {
 export const startServer = (port: number, host: string, ctx: Context): void => {
     const app = createServer(ctx)
     app.listen(port, host, () => {
-        console.log(`Server running at http://${host}:${port}`)
+        console.log(`Server running at http://${host}:${port} (verbose=${ctx.verbose})`)
     })
 }

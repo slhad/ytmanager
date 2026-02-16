@@ -1,0 +1,19 @@
+info:
+  name: Set Current Stream
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/stream/current"
+  auth: inherit
+  headers:
+    Content-Type: application/json
+  body: |
+    {"title":"Weekend Stream","description":"Chat and games","playlist":"Gaming,Live","tag":"gameplay,fun"}
+
+settings:
+  encodeUrl: false
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
