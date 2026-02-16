@@ -384,13 +384,21 @@ export class YouTubeService {
     fetchFile(pathObj: string, allowedType: string[], isDir = false) {
         if (isDir) {
             const dirContent = readdirSync(pathObj)
-            const lastFile = dirContent
+            const filteredFiles = dirContent
                 .filter((nameFile) => allowedType.includes(nameFile.toLocaleLowerCase().split(".").slice(-1)[0]))
-                .sort((a, b) => {
-                    const a2 = statSync(join(pathObj, a)).mtimeMs
-                    const b2 = statSync(join(pathObj, b)).mtimeMs
-                    return a2 < b2 ? 1 : (a2 > b2 ? -1 : 0)
-                })[0]
+            
+            if (filteredFiles.length === 0) {
+                throw new Error(`No files with extensions ${allowedType.join(", ")} found in directory: ${pathObj}`)
+            }
+            
+            const filesWithStats = filteredFiles.map((name) => ({
+                name,
+                mtimeMs: statSync(join(pathObj, name)).mtimeMs
+            }))
+            
+            filesWithStats.sort((a, b) => b.mtimeMs - a.mtimeMs)
+            
+            const lastFile = filesWithStats[0].name
             pathObj = join(pathObj, lastFile)
         }
         log({ path: pathObj }, "File path")

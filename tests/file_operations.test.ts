@@ -19,9 +19,9 @@ describe("File Operations", () => {
 
     beforeEach(() => {
         service = new YouTubeService(null)
-        mockReaddirSync.mockClear()
-        mockStatSync.mockClear()
-        mockReadFileSync.mockClear()
+        mockReaddirSync.mockReset()
+        mockStatSync.mockReset()
+        mockReadFileSync.mockReset()
     })
 
     describe("fetchFile", () => {
@@ -59,12 +59,12 @@ describe("File Operations", () => {
 
         it("should filter files by allowed extensions", () => {
             const dirPath = "/path/to/dir"
-            const files = ["image.png", "doc.pdf", "video.mp4", "data.json"]
+            const files = ["image.png", "doc.pdf", "photo.jpg", "data.json"]
             
             mockReaddirSync.mockReturnValue(files)
             mockStatSync
                 .mockReturnValueOnce({ mtimeMs: 1700000000000 }) // image.png
-                .mockReturnValueOnce({ mtimeMs: 1650000000000 }) // video.mp4
+                .mockReturnValueOnce({ mtimeMs: 1650000000000 }) // photo.jpg
             
             mockReadFileSync.mockReturnValue(Buffer.from("image data"))
 
@@ -110,12 +110,10 @@ describe("File Operations", () => {
             const dirPath = "/path/to/empty"
             
             mockReaddirSync.mockReturnValue([])
-            mockReadFileSync.mockReturnValue(Buffer.from(""))
 
-            const result = service.fetchFile(dirPath, ["txt"], true)
-
-            expect(mockReadFileSync).toHaveBeenCalledWith("/path/to/empty/undefined")
-            expect(result).toEqual(Buffer.from(""))
+            expect(() => {
+                service.fetchFile(dirPath, ["txt"], true)
+            }).toThrow("No files with extensions txt found in directory: /path/to/empty")
         })
 
         it("should handle directory with no matching files", () => {
@@ -123,12 +121,10 @@ describe("File Operations", () => {
             const files = ["video.mp4", "doc.pdf"]
             
             mockReaddirSync.mockReturnValue(files)
-            mockReadFileSync.mockReturnValue(Buffer.from(""))
 
-            const result = service.fetchFile(dirPath, ["png", "jpg"], true)
-
-            // Should try to read undefined since no files match
-            expect(mockReadFileSync).toHaveBeenCalledWith("/path/to/dir/undefined")
+            expect(() => {
+                service.fetchFile(dirPath, ["png", "jpg"], true)
+            }).toThrow("No files with extensions png, jpg found in directory: /path/to/dir")
         })
 
         it("should handle single file in directory", () => {
@@ -165,10 +161,11 @@ describe("File Operations", () => {
             const files = ["old.png", "newer.jpg", "newest.jpeg"]
             
             mockReaddirSync.mockReturnValue(files)
+            // Mock order matches filtered array: old.png, newer.jpg, newest.jpeg
             mockStatSync
                 .mockReturnValueOnce({ mtimeMs: 1600000000000 }) // old.png
-                .mockReturnValueOnce({ mtimeMs: 1700000000000 }) // newest.jpeg
                 .mockReturnValueOnce({ mtimeMs: 1650000000000 }) // newer.jpg
+                .mockReturnValueOnce({ mtimeMs: 1700000000000 }) // newest.jpeg
             
             const imageContent = Buffer.from("newest image")
             mockReadFileSync.mockReturnValue(imageContent)
@@ -214,10 +211,11 @@ describe("File Operations", () => {
             const files = ["old.mkv", "newer.mp4", "newest.mov"]
             
             mockReaddirSync.mockReturnValue(files)
+            // Mock order matches filtered array: old.mkv, newer.mp4, newest.mov
             mockStatSync
                 .mockReturnValueOnce({ mtimeMs: 1600000000000 }) // old.mkv
-                .mockReturnValueOnce({ mtimeMs: 1700000000000 }) // newest.mov
                 .mockReturnValueOnce({ mtimeMs: 1650000000000 }) // newer.mp4
+                .mockReturnValueOnce({ mtimeMs: 1700000000000 }) // newest.mov
             
             const videoContent = Buffer.from("newest video")
             mockReadFileSync.mockReturnValue(videoContent)
@@ -254,7 +252,8 @@ describe("File Operations", () => {
             const files = ["a.txt", "b.txt", "c.txt", "d.txt"]
             
             mockReaddirSync.mockReturnValue(files)
-            // c is newest, b is second, d is third, a is oldest
+            // c is newest (4000), b is second (3000), d is third (2000), a is oldest (1000)
+            // Mock order matches files array: a, b, c, d
             mockStatSync
                 .mockReturnValueOnce({ mtimeMs: 1000 }) // a
                 .mockReturnValueOnce({ mtimeMs: 3000 }) // b
