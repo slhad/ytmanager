@@ -28,4 +28,4 @@ jobs:
       - name: Run opencode
         uses: anomalyco/opencode/github@latest
         with:
-          model: github-copilot/gpt-5-mini
+          model: opencode/kimi-k2.5-free
